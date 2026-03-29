@@ -5,7 +5,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * This ensures compatibility with standalone APKs and environments without a Node.js server.
  */
 
-const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+// For standalone device builds, we ensure the key is always available.
+const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "AIzaSyAQB64iuXlVOH8sBsp1PPV5ehC6bGTf7-g";
 
 if (!API_KEY && typeof window !== 'undefined') {
   console.warn("NEXT_PUBLIC_GEMINI_API_KEY is missing. AI features will not work.");
