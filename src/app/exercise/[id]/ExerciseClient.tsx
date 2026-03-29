@@ -6,9 +6,30 @@ import { ChevronLeft, Send, Play, Lightbulb, CheckCircle2, AlertCircle, Zap, Roc
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { personalizedCodeFeedback, type PersonalizedCodeFeedbackOutput } from "@/ai/flows/personalized-code-feedback";
-import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { getClientAiModel } from "@/ai/client-ai";
+import { motion, AnimatePresence } from "framer-motion";
+
+interface FeedbackError {
+  line?: number;
+  message: string;
+  explanation: string;
+}
+
+interface FeedbackSuggestion {
+  type: 'readability' | 'performance' | 'best_practice' | 'optimization' | 'style' | 'logic';
+  message: string;
+  explanation: string;
+  codeSnippet?: string;
+}
+
+interface PersonalizedCodeFeedback {
+  isCorrect: boolean;
+  feedbackSummary: string;
+  errorsFound: FeedbackError[];
+  suggestions: FeedbackSuggestion[];
+  improvedCodeSnippet?: string;
+}
 import { COURSES } from "@/app/lib/courses-data";
 import { useAuth, useFirestore, useUser } from "@/firebase";
 import { doc, collection, serverTimestamp } from "firebase/firestore";
@@ -28,7 +49,7 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
 
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<PersonalizedCodeFeedbackOutput | null>(null);
+  const [feedback, setFeedback] = useState<PersonalizedCodeFeedback | null>(null);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -69,12 +90,41 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
         }
       }
 
-      const result = await personalizedCodeFeedback({
-        userCode: code,
-        exerciseDescription: currentExercise.description,
-        language: currentExercise.language,
-        pastUserErrors: pastUserErrors
-      });
+      const model = getClientAiModel();
+      const prompt = `You are an expert programming tutor designed to provide comprehensive, personalized feedback on user-submitted code.
+Your goal is to help the user understand their mistakes, learn efficiently, and improve their coding skills.
+
+The user has submitted code for a coding exercise. Analyze their code for correctness, efficiency, readability, and adherence to best practices.
+
+EXERCISE DESCRIPTION:
+${currentExercise.description}
+
+USER'S CODE (${currentExercise.language}):
+\`\`\`${currentExercise.language}
+${code}
+\`\`\`
+
+${pastUserErrors ? `USER'S PAST ERRORS SUMMARY:
+${pastUserErrors}
+Use this information to provide more personalized and relevant feedback.` : ""}
+
+Return ONLY a valid JSON object with this structure:
+{
+  "isCorrect": boolean,
+  "feedbackSummary": "string",
+  "errorsFound": [
+    { "line": number, "message": "string", "explanation": "string" }
+  ],
+  "suggestions": [
+    { "type": "readability" | "performance" | "best_practice" | "optimization" | "style" | "logic", "message": "string", "explanation": "string", "codeSnippet": "string" }
+  ],
+  "improvedCodeSnippet": "string"
+}
+`;
+
+      const aiResult = await model.generateContent(prompt);
+      const response = await aiResult.response;
+      const result = JSON.parse(response.text());
       
       setFeedback(result);
 
@@ -190,7 +240,7 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
               {feedback.errorsFound.length > 0 && (
                 <div className="space-y-3 mb-4">
                   <h5 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Errors Found</h5>
-                  {feedback.errorsFound.map((err, i) => (
+                  {feedback.errorsFound.map((err: FeedbackError, i: number) => (
                     <div key={i} className="bg-background/50 p-3 rounded-lg border border-border text-xs">
                       <p className="font-bold text-destructive mb-1">Line {err.line}: {err.message}</p>
                       <p className="text-muted-foreground italic">{err.explanation}</p>
@@ -202,7 +252,7 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
               {feedback.suggestions.length > 0 && (
                 <div className="space-y-3">
                   <h5 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expert Suggestions</h5>
-                  {feedback.suggestions.map((sug, i) => (
+                  {feedback.suggestions.map((sug: FeedbackSuggestion, i: number) => (
                     <div key={i} className="bg-background/50 p-3 rounded-lg border border-border text-xs">
                       <div className="flex justify-between mb-1">
                         <span className="font-bold text-primary uppercase text-[10px] tracking-tighter">{sug.type}</span>

@@ -3,19 +3,28 @@
 
 import { useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
-import { generateCustomizedChallenge, type CustomizedChallengeOutput } from "@/ai/flows/customized-practice-challenges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { BrainCircuit, Cpu, Sparkles, Wand2, Terminal, Code2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { getClientAiModel } from "@/ai/client-ai";
+
+interface CustomizedChallenge {
+  challengeTitle: string;
+  challengeDescription: string;
+  problemStatement: string;
+  inputExamples: string[];
+  outputExamples: string[];
+  hints?: string[];
+}
 
 export default function PracticePage() {
   const { toast } = useToast();
   const [weakness, setWeakness] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [challenge, setChallenge] = useState<CustomizedChallengeOutput | null>(null);
+  const [challenge, setChallenge] = useState<CustomizedChallenge | null>(null);
 
   const handleGenerate = async () => {
     if (!weakness.trim()) {
@@ -27,13 +36,37 @@ export default function PracticePage() {
     setChallenge(null);
 
     try {
-      const result = await generateCustomizedChallenge({
-        identifiedWeaknesses: weakness,
-        programmingLanguage: "JavaScript"
-      });
-      setChallenge(result);
+      const model = getClientAiModel();
+      const prompt = `You are an experienced programming instructor. Your goal is to create a customized coding challenge for a user.
+
+Generate a coding challenge that specifically targets the following weaknesses identified in the user's performance: ${weakness}.
+
+The challenge should primarily be solvable using the JavaScript programming language.
+
+Ensure the challenge has a clear problem statement, provides concrete input examples, and their corresponding expected outputs. Optionally, provide some helpful hints.
+
+Return ONLY a valid JSON object with the following structure:
+{
+  "challengeTitle": "string",
+  "challengeDescription": "string",
+  "problemStatement": "string",
+  "inputExamples": ["string"],
+  "outputExamples": ["string"],
+  "hints": ["string"]
+}
+`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const data = JSON.parse(response.text());
+      setChallenge(data);
     } catch (error: any) {
-      toast({ title: "Failed to generate challenge.", description: error.message || "An unknown error occurred.", variant: "destructive" });
+      console.error("Practice generation error:", error);
+      toast({ 
+        title: "Failed to generate challenge.", 
+        description: error.message || "Ensure your API key is correctly configured in .env", 
+        variant: "destructive" 
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -115,7 +148,7 @@ export default function PracticePage() {
                     <div className="bg-background/80 p-4 rounded-xl border border-border">
                       <h5 className="text-[10px] font-bold uppercase tracking-tighter text-primary mb-2">Input Examples</h5>
                       <div className="space-y-2">
-                        {challenge.inputExamples.map((ex, i) => (
+                        {challenge.inputExamples.map((ex: string, i: number) => (
                           <code key={i} className="block text-[10px] font-code bg-secondary p-1 rounded">
                             {ex}
                           </code>
@@ -125,7 +158,7 @@ export default function PracticePage() {
                     <div className="bg-background/80 p-4 rounded-xl border border-border">
                       <h5 className="text-[10px] font-bold uppercase tracking-tighter text-accent mb-2">Expected Outputs</h5>
                       <div className="space-y-2">
-                        {challenge.outputExamples.map((ex, i) => (
+                        {challenge.outputExamples.map((ex: string, i: number) => (
                           <code key={i} className="block text-[10px] font-code bg-secondary p-1 rounded">
                             {ex}
                           </code>
@@ -140,7 +173,7 @@ export default function PracticePage() {
                         <Code2 className="w-4 h-4" /> AI Tactical Hints
                       </h4>
                       <ul className="space-y-2">
-                        {challenge.hints.map((hint, i) => (
+                        {challenge.hints.map((hint: string, i: number) => (
                           <li key={i} className="text-xs text-muted-foreground flex gap-2">
                             <span className="text-primary font-bold">{i+1}.</span>
                             {hint}
