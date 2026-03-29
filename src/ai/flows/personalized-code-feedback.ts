@@ -1,4 +1,4 @@
-// Client-side execution for standalone APK
+'use server';
 /**
  * @fileOverview Provides personalized AI feedback on user-submitted code for coding exercises.
  *

@@ -1,4 +1,4 @@
-// Client-side execution for standalone APK
+'use server';
 /**
  * @fileOverview A Genkit flow for generating customized coding challenges based on user weaknesses.
  *
