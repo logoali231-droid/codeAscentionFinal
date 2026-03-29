@@ -1,4 +1,4 @@
-'use server';
+// Client-side execution for standalone APK
 /**
  * @fileOverview Provides personalized AI feedback on user-submitted code for coding exercises.
  *
@@ -16,6 +16,8 @@ const PersonalizedCodeFeedbackInputSchema = z.object({
     z.string().describe('A description of the coding exercise or problem statement.'),
   language:
     z.string().describe('The programming language of the user code (e.g., "Python", "JavaScript", "Java").'),
+  pastUserErrors:
+    z.string().optional().describe('A summary of the user\'s past errors or weaknesses to personalize feedback.'),
 });
 export type PersonalizedCodeFeedbackInput = z.infer<
   typeof PersonalizedCodeFeedbackInputSchema
@@ -87,7 +89,13 @@ Here is the user's code written in {{language}}:
 {{{userCode}}}
 \`\`\`
 
-Based on the exercise description and the user's code, provide feedback in a structured JSON format as described by the output schema.
+{{#if pastUserErrors}}
+Here is a summary of the user's past errors and areas they've struggled with:
+{{{pastUserErrors}}}
+Use this information to provide more personalized and relevant feedback, focusing on helping them overcome recurring issues.
+{{/if}}
+
+Based on the exercise description, the user's code, and their history, provide feedback in a structured JSON format as described by the output schema.
 Be sure to:
 1.  Determine if the code is logically correct and meets the exercise requirements. Set 'isCorrect' accordingly.
 2.  Provide a 'feedbackSummary' that briefly summarizes the main points of your review.
