@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * CORE PHILOSOPHY:
+     * This ruleset implements a strict structural segregation between public educational content 
+     * and private user progress data. It enforces a robust "Owner-Only" access model for user data 
+     * and a "Public-Read/Admin-Write" model for global course materials.
+     *
+     * DATA STRUCTURE:
+     * 1. Private User Data: Nested under /users/{userId}. All subcollections (progress, attempts, mastery)
+     *    inherit this ownership requirement.
+     * 2. Global Content: Top-level collections (learningPaths, modules, lessons, exercises, skills) 
+     *    providing the curriculum.
+     * 3. Authorization: A dedicated /roles_admin collection manages administrative privileges via 
+     *    document existence.
+     *
+     * KEY SECURITY DECISIONS:
+     * - Authorization Independence: User IDs are denormalized into subcollection documents to allow
+     *   atomic, high-performance security checks without parent lookups.
+     * - DBAC (Document-Based Access Control): Administrative rights are determined by the presence 
+     *   of a UID in the /roles_admin collection.
+     * - Relational Integrity: On creation of user-scoped data, the rules force the document's 
+     *   internal 'userId' to match the authenticated user's UID and the URL path.
+     * - Prototyping Flexibility: Data schemas (types and optional fields) are not strictly enforced 
+     *   to allow for rapid frontend iteration, focusing purely on secure authorization.
+     */
+
+    // --- Helper Functions ---
+
+    /** @description Checks if the user is authenticated with any provider. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Verifies the user is an owner and the document already exists for state changes. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** @description Checks if the user's UID exists in the admin roles collection. */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /** @description Checks if the user is an admin and the document exists for state changes. */
+    function isExistingAdmin() {
+      return resource != null && isAdmin();
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the root user profile document.
+     * @path /users/{userId}
+     * @allow (create) if auth.uid matches userId and document data 'id' matches.
+     * @deny (read) if auth.uid does not match userId.
+     * @principle Path-based ownership and data-path consistency.
+     */
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Tracks progress for specific lessons. Denormalized userId ensures atomic checks.
+       * @path /users/{userId}/lessonProgress/{id}
+       */
+      match /lessonProgress/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Records user exercise attempts for AI feedback and progress tracking.
+       * @path /users/{userId}/exerciseAttempts/{id}
+       */
+      match /exerciseAttempts/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Tracks mastery levels across different skills for the visual skill tree.
+       * @path /users/{userId}/skillMastery/{id}
+       */
+      match /skillMastery/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+
+    /**
+     * @description Administrative roles. Existence of document grants admin rights.
+     * @path /roles_admin/{adminId}
+     * @principle DBAC (Document-Based Access Control) for global management.
+     */
+    match /roles_admin/{adminId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isExistingAdmin();
+      allow delete: if isExistingAdmin();
+    }
+
+    /**
+     * @description Global curriculum data. Publicly readable by all users, writable only by admins.
+     * @path /learningPaths/{id}, /modules/{id}, /lessons/{id}, /exercises/{id}, /skills/{id}
+     * @principle Public consumption with centralized administrative control.
+     */
+    match /learningPaths/{id} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isExistingAdmin();
+    }
+
+    match /modules/{id} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isExistingAdmin();
+    }
+
+    match /lessons/{id} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isExistingAdmin();
+    }
+
+    match /exercises/{id} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isExistingAdmin();
+    }
+
+    match /skills/{id} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isExistingAdmin();
+    }
+
+  }
+}

@@ -1,0 +1,579 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Stores information about a registered user of the Code Ascent application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's chosen display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "The date and time when the user registered.",
+          "format": "date-time"
+        },
+        "lastActivityDate": {
+          "type": "string",
+          "description": "The date and time of the user's last recorded activity in the app.",
+          "format": "date-time"
+        },
+        "currentLearningPathId": {
+          "type": "string",
+          "description": "Reference to the LearningPath the user is currently engaged in. (Relationship: LearningPath 1:N UserProfile)"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email",
+        "registrationDate"
+      ]
+    },
+    "LearningPath": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LearningPath",
+      "type": "object",
+      "description": "Represents a structured curriculum or course covering a specific programming area.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the LearningPath entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The name of the learning path (e.g., \"Python Fundamentals\")."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief summary of what the learning path covers."
+        },
+        "language": {
+          "type": "string",
+          "description": "The primary programming language taught in this path (e.g., \"Python\", \"JavaScript\")."
+        },
+        "level": {
+          "type": "string",
+          "description": "The target difficulty level of the path (e.g., \"Beginner\", \"Intermediate\", \"Expert\")."
+        },
+        "moduleIds": {
+          "type": "array",
+          "description": "References to Modules included in this learning path, in their intended order. (Relationship: LearningPath 1:N Module (via array of IDs))",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "language",
+        "level",
+        "moduleIds"
+      ]
+    },
+    "Module": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Module",
+      "type": "object",
+      "description": "A distinct unit of learning within a LearningPath, comprising lessons and exercises.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Module entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the module (e.g., \"Variables and Data Types\")."
+        },
+        "description": {
+          "type": "string",
+          "description": "A summary of the concepts covered in this module."
+        },
+        "learningPathId": {
+          "type": "string",
+          "description": "Reference to the LearningPath this module belongs to. (Relationship: LearningPath 1:N Module)"
+        },
+        "orderInPath": {
+          "type": "number",
+          "description": "The sequential order of this module within its parent learning path."
+        },
+        "lessonIds": {
+          "type": "array",
+          "description": "References to Lessons within this module, in their intended order. (Relationship: Module 1:N Lesson (via array of IDs))",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "learningPathId",
+        "orderInPath",
+        "lessonIds"
+      ]
+    },
+    "Lesson": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Lesson",
+      "type": "object",
+      "description": "An individual learning unit that can be an explanation, an exercise, or a quiz.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Lesson entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the lesson (e.g., \"Introduction to Integers\")."
+        },
+        "description": {
+          "type": "string",
+          "description": "A short description of the lesson's content or objective."
+        },
+        "moduleId": {
+          "type": "string",
+          "description": "Reference to the Module this lesson belongs to. (Relationship: Module 1:N Lesson)"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of content for this lesson (e.g., \"explanation\", \"exercise\", \"quiz\")."
+        },
+        "contentMarkdown": {
+          "type": "string",
+          "description": "The educational content of the lesson, formatted in Markdown (for \"explanation\" type lessons)."
+        },
+        "exerciseId": {
+          "type": "string",
+          "description": "Reference to the Exercise associated with this lesson, if applicable. (Relationship: Exercise 1:1 Lesson)"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "moduleId",
+        "type"
+      ]
+    },
+    "Exercise": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Exercise",
+      "type": "object",
+      "description": "A coding problem or challenge designed for users to practice programming concepts.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Exercise entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the coding exercise."
+        },
+        "description": {
+          "type": "string",
+          "description": "The full problem statement and instructions for the exercise."
+        },
+        "language": {
+          "type": "string",
+          "description": "The programming language required for solving this exercise."
+        },
+        "initialCode": {
+          "type": "string",
+          "description": "The starting code template provided to the user."
+        },
+        "testCasesJson": {
+          "type": "string",
+          "description": "A JSON string containing test cases (inputs and expected outputs) for automated grading."
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "The estimated difficulty level of the exercise (e.g., \"Easy\", \"Medium\", \"Hard\")."
+        },
+        "skillIds": {
+          "type": "array",
+          "description": "References to Skill entities that this exercise helps to develop or assess. (Relationship: Skill N:N Exercise)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "language",
+        "initialCode",
+        "testCasesJson",
+        "difficulty",
+        "skillIds"
+      ]
+    },
+    "Skill": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Skill",
+      "type": "object",
+      "description": "Represents a specific programming concept, technique, or area of mastery. Used to build the visual skill tree.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Skill entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the skill (e.g., \"Variables\", \"For Loops\", \"Data Structures\")."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of what proficiency in this skill entails."
+        },
+        "parentSkillId": {
+          "type": "string",
+          "description": "Reference to a parent Skill, establishing a hierarchical relationship in the skill tree. (Relationship: Skill 1:N Skill (self-referencing))"
+        },
+        "prerequisiteSkillIds": {
+          "type": "array",
+          "description": "References to other Skill entities that must be mastered before this skill. (Relationship: Skill N:N Skill (self-referencing))",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description"
+      ]
+    },
+    "UserLessonProgress": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserLessonProgress",
+      "type": "object",
+      "description": "Tracks a user's completion status and performance for individual lessons.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserLessonProgress entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity. (Relationship: UserProfile 1:N UserLessonProgress)"
+        },
+        "lessonId": {
+          "type": "string",
+          "description": "Reference to the Lesson entity. (Relationship: Lesson 1:N UserLessonProgress)"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the user's engagement with the lesson (e.g., \"Not Started\", \"In Progress\", \"Completed\")."
+        },
+        "completedAt": {
+          "type": "string",
+          "description": "The date and time when the user completed the lesson.",
+          "format": "date-time"
+        },
+        "score": {
+          "type": "number",
+          "description": "The score achieved by the user for this lesson, if applicable (e.g., for quizzes or exercises)."
+        },
+        "isMastered": {
+          "type": "boolean",
+          "description": "A boolean indicating if the user has demonstrated mastery of the concepts in this lesson."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "lessonId",
+        "status"
+      ]
+    },
+    "UserExerciseAttempt": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserExerciseAttempt",
+      "type": "object",
+      "description": "Records each attempt a user makes on an exercise, including their submitted code and outcome. This data is critical for client-side AI analysis to identify weaknesses.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserExerciseAttempt entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity. (Relationship: UserProfile 1:N UserExerciseAttempt)"
+        },
+        "exerciseId": {
+          "type": "string",
+          "description": "Reference to the Exercise entity. (Relationship: Exercise 1:N UserExerciseAttempt)"
+        },
+        "attemptNumber": {
+          "type": "number",
+          "description": "A sequential number indicating which attempt this is for the given exercise."
+        },
+        "submittedCode": {
+          "type": "string",
+          "description": "The exact code submitted by the user for this attempt."
+        },
+        "isCorrect": {
+          "type": "boolean",
+          "description": "Boolean indicating whether the submitted code passed all test cases."
+        },
+        "feedbackSummary": {
+          "type": "string",
+          "description": "A high-level summary of the AI-generated feedback for this attempt, identifying key issues."
+        },
+        "submittedAt": {
+          "type": "string",
+          "description": "The date and time when the attempt was submitted.",
+          "format": "date-time"
+        },
+        "timeSpentSeconds": {
+          "type": "number",
+          "description": "The duration, in seconds, the user spent on this particular attempt."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "exerciseId",
+        "attemptNumber",
+        "submittedCode",
+        "isCorrect",
+        "submittedAt"
+      ]
+    },
+    "UserSkillMastery": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserSkillMastery",
+      "type": "object",
+      "description": "Tracks the user's current mastery level for each programming skill, feeding into the Visual Skill Mastery Tree.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserSkillMastery entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity. (Relationship: UserProfile 1:N UserSkillMastery)"
+        },
+        "skillId": {
+          "type": "string",
+          "description": "Reference to the Skill entity. (Relationship: Skill 1:N UserSkillMastery)"
+        },
+        "masteryLevel": {
+          "type": "number",
+          "description": "A numerical value (e.g., 0-100) representing the user's proficiency in the skill."
+        },
+        "lastUpdated": {
+          "type": "string",
+          "description": "The date and time when the mastery level for this skill was last re-evaluated or updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "skillId",
+        "masteryLevel",
+        "lastUpdated"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profiles. Only the user themselves can read and update their profile. The document ID MUST match `request.auth.uid`. No additional denormalized authorization fields needed here as it is the root of user-specific data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, matching `request.auth.uid`."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/lessonProgress/{userLessonProgressId}",
+        "definition": {
+          "entityName": "UserLessonProgress",
+          "schema": {
+            "$ref": "#/backend/entities/UserLessonProgress"
+          },
+          "description": "Tracks a user's progress on individual lessons. Only the owning user can read and write this data. Includes denormalized 'userId' field for authorization independence, ensuring `request.auth.uid` matches both the path parameter and the document's 'userId'.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, matching `request.auth.uid`."
+            },
+            {
+              "name": "userLessonProgressId",
+              "description": "The unique ID for the user's progress on a specific lesson."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/exerciseAttempts/{userExerciseAttemptId}",
+        "definition": {
+          "entityName": "UserExerciseAttempt",
+          "schema": {
+            "$ref": "#/backend/entities/UserExerciseAttempt"
+          },
+          "description": "Records each attempt a user makes on an exercise. Only the owning user can read and write this data. Includes denormalized 'userId' field for authorization independence, ensuring `request.auth.uid` matches both the path parameter and the document's 'userId'.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, matching `request.auth.uid`."
+            },
+            {
+              "name": "userExerciseAttemptId",
+              "description": "The unique ID for a specific user exercise attempt."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/skillMastery/{userSkillMasteryId}",
+        "definition": {
+          "entityName": "UserSkillMastery",
+          "schema": {
+            "$ref": "#/backend/entities/UserSkillMastery"
+          },
+          "description": "Tracks a user's mastery level for each programming skill. Only the owning user can read and write this data. Includes denormalized 'userId' field for authorization independence, ensuring `request.auth.uid` matches both the path parameter and the document's 'userId'.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, matching `request.auth.uid`."
+            },
+            {
+              "name": "userSkillMasteryId",
+              "description": "The unique ID for the user's mastery record of a specific skill."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/learningPaths/{learningPathId}",
+        "definition": {
+          "entityName": "LearningPath",
+          "schema": {
+            "$ref": "#/backend/entities/LearningPath"
+          },
+          "description": "Global collection for all learning paths. This content is public and read-only for authenticated users. Writable only by administrators.",
+          "params": [
+            {
+              "name": "learningPathId",
+              "description": "The unique ID of the learning path."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/modules/{moduleId}",
+        "definition": {
+          "entityName": "Module",
+          "schema": {
+            "$ref": "#/backend/entities/Module"
+          },
+          "description": "Global collection for all modules. This content is public and read-only for authenticated users. Writable only by administrators. Includes 'learningPathId' for direct querying and context without parent document lookup.",
+          "params": [
+            {
+              "name": "moduleId",
+              "description": "The unique ID of the module."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/lessons/{lessonId}",
+        "definition": {
+          "entityName": "Lesson",
+          "schema": {
+            "$ref": "#/backend/entities/Lesson"
+          },
+          "description": "Global collection for all lessons. This content is public and read-only for authenticated users. Writable only by administrators. Includes 'moduleId' for direct querying and context.",
+          "params": [
+            {
+              "name": "lessonId",
+              "description": "The unique ID of the lesson."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/exercises/{exerciseId}",
+        "definition": {
+          "entityName": "Exercise",
+          "schema": {
+            "$ref": "#/backend/entities/Exercise"
+          },
+          "description": "Global collection for all coding exercises. This content is public and read-only for authenticated users. Writable only by administrators.",
+          "params": [
+            {
+              "name": "exerciseId",
+              "description": "The unique ID of the exercise."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/skills/{skillId}",
+        "definition": {
+          "entityName": "Skill",
+          "schema": {
+            "$ref": "#/backend/entities/Skill"
+          },
+          "description": "Global collection for all programming skills, forming the skill tree. This content is public and read-only for authenticated users. Writable only by administrators. Includes 'parentSkillId' and 'prerequisiteSkillIds' for direct tree navigation.",
+          "params": [
+            {
+              "name": "skillId",
+              "description": "The unique ID of the skill."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{adminId}",
+        "definition": {
+          "entityName": "admin",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Collection for managing administrative roles. Each document ID corresponds to a user's UID. The existence of a document signifies admin privileges. This collection enables DBAC for secure management of global content. Read-only by non-admins, writable by existing admins.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique ID of the user who is an administrator, matching `request.auth.uid`."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed to be secure, scalable, and highly debuggable by strictly adhering to the core design principles. The primary strategy employed is **Structural Segregation (Mandate B)**, dividing data into two main categories: globally accessible educational content and private, user-specific progress data.\n\n**Authorization Independence (Mandate A)** is achieved by ensuring that authorization context is denormalized where necessary. For all user-specific subcollections (e.g., `lessonProgress`, `exerciseAttempts`, `skillMastery`), the `userId` is explicitly stored within each document. This redundancy, combined with the hierarchical path (`/users/{userId}/...`), allows security rules to check `request.auth.uid == userId` (from the document data) or `request.auth.uid == pathParam.userId` (from the URL wildcard) without resorting to expensive and complex `get()` operations. This makes rules atomic, efficient, and simpler to reason about, as access decisions for a document are self-contained.\n\n**Querying for All Public Data (QAPs)** is supported by placing core educational content (`LearningPath`, `Module`, `Lesson`, `Exercise`, `Skill`) in top-level collections. These collections have a homogeneous security posture: read-only for all authenticated users and writable only by administrators (defined via a `roles_admin` collection). This allows clients to `list` these collections efficiently and securely, as the rules can simply permit read access for `request.auth.uid != null`. No filtering by user is needed at this level, fulfilling the 'Rules are not Filters' principle.\n\n**Querying for User-Specific Data (QAPs)** is supported by using **Path-Based Ownership (Mandate C.1 & C.2)** for all private user data. Collections like `/users/{userId}/lessonProgress` are designed such that a user can only query their own data. A `list` operation on `/users/$(request.auth.uid)/lessonProgress` implicitly ensures that only the authenticated user's data is retrieved and that each document in the result set passes the `request.auth.uid == resource.data.userId` check, further ensuring robust security without complex rule logic.\n\n**DBAC (Mandate C.4)** is implemented using an `existence over content` model for admin roles, where `/roles_admin/{adminId}` documents signify administrative privileges, allowing rules to check `exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))`.\n\nThis structure prioritizes clarity of intent, simplifies rule writing, and ensures that the application can scale securely while providing a highly debuggable authorization model."
+  }
+}

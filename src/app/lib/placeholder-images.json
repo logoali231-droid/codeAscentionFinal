@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-coding",
+      "description": "A futuristic coding interface",
+      "imageUrl": "https://picsum.photos/seed/code1/800/600",
+      "imageHint": "coding programming"
+    },
+    {
+      "id": "skill-js",
+      "description": "JavaScript logo stylized",
+      "imageUrl": "https://picsum.photos/seed/js/200/200",
+      "imageHint": "javascript logo"
+    },
+    {
+      "id": "skill-python",
+      "description": "Python logo stylized",
+      "imageUrl": "https://picsum.photos/seed/python/200/200",
+      "imageHint": "python logo"
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 201 19% 8%;
+    --card: 0 0% 98%;
+    --card-foreground: 201 19% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 201 19% 8%;
+    --primary: 206 100% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 120 93% 40%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 206 100% 56%;
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 201 19% 8%;
+    --foreground: 0 0% 100%;
+    --card: 201 19% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 201 19% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 206 100% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 201 19% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 201 19% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 120 93% 50%;
+    --accent-foreground: 201 19% 8%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 201 19% 20%;
+    --input: 201 19% 20%;
+    --ring: 206 100% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body overflow-x-hidden selection:bg-primary/30;
+  }
+}
+
+.glow-blue {
+  box-shadow: 0 0 15px rgba(31, 158, 255, 0.4);
+}
+
+.glow-green {
+  box-shadow: 0 0 15px rgba(13, 242, 13, 0.4);
+}
+
+.text-glow-green {
+  text-shadow: 0 0 8px rgba(13, 242, 13, 0.6);
+}
+
+.skill-path-line {
+  background: linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--muted)) 100%);
+}
+
+.android-container {
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  background-color: var(--background);
+}
+
+@keyframes pulse-glow {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
