@@ -51,8 +51,19 @@ Return ONLY a valid JSON object:
   "insight": "string"
 }`;
           
-          const res = await generateStructuredAIOutput<{insight: string}>(prompt, undefined, true);
-          setAiInsight(res.insight);
+          try {
+            const res = await generateStructuredAIOutput<{insight: string}>(prompt, undefined, true);
+            setAiInsight(res.insight);
+          } catch (aiErr) {
+            // Local fallback — no API needed
+            const fallbacks = [
+              "You're making great progress! Focus on practicing the fundamentals — loops and functions are your foundation.",
+              "Keep pushing! Every error is a lesson. Review your recent mistakes and try the exercises again.",
+              "You're building real skills! Try tackling a challenge in the Practice Lab to sharpen your edge.",
+              "Consistency is key. Even 15 minutes of practice daily makes a huge difference over time!",
+            ];
+            setAiInsight(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
+          }
         }
       } catch (err: any) {
         console.error("AI Insight error:", err);

@@ -141,12 +141,62 @@ Return ONLY a valid JSON object with this structure:
 }
 `;
 
-      const result = await generateStructuredAIOutput<PersonalizedCodeFeedback>(
-        prompt, 
-        undefined, 
-        true, 
-        (attempt) => setRetryStatus(`Analyzing... Retry ${attempt}/6`)
-      );
+      let result: PersonalizedCodeFeedback;
+
+      try {
+        result = await generateStructuredAIOutput<PersonalizedCodeFeedback>(
+          prompt, 
+          undefined, 
+          true, 
+          (attempt) => setRetryStatus(`Analyzing... Retry ${attempt}/6`)
+        );
+      } catch (cloudErr) {
+        // LOCAL FALLBACK: Basic heuristic code evaluation
+        console.warn("Cloud AI unavailable, using local evaluator:", cloudErr);
+        setRetryStatus("Local Brain...");
+        
+        const trimmedCode = code.trim();
+        const starterTrimmed = currentExercise.starterCode.trim();
+        const isUnchanged = trimmedCode === starterTrimmed || trimmedCode === "// Your code here" || trimmedCode.length < 5;
+        
+        const errors: FeedbackError[] = [];
+        const suggestions: FeedbackSuggestion[] = [];
+
+        if (isUnchanged) {
+          errors.push({ line: 1, message: "Code unchanged", explanation: "You haven't modified the starter code yet. Try writing your solution!" });
+        }
+        
+        // Check for common syntax issues
+        const openParens = (trimmedCode.match(/\(/g) || []).length;
+        const closeParens = (trimmedCode.match(/\)/g) || []).length;
+        if (openParens !== closeParens) {
+          errors.push({ line: 1, message: "Mismatched parentheses", explanation: `You have ${openParens} opening ( and ${closeParens} closing ). Make sure they match!` });
+        }
+
+        const openBraces = (trimmedCode.match(/\{/g) || []).length;
+        const closeBraces = (trimmedCode.match(/\}/g) || []).length;
+        if (openBraces !== closeBraces) {
+          errors.push({ line: 1, message: "Mismatched braces", explanation: `You have ${openBraces} opening { and ${closeBraces} closing }. Check your code blocks!` });
+        }
+
+        if (trimmedCode.includes("console.log") && currentExercise.description.toLowerCase().includes("return")) {
+          suggestions.push({ type: "logic", message: "Use 'return' instead of console.log", explanation: "The exercise asks you to return a value, not print it.", codeSnippet: "return result;" });
+        }
+
+        const hasLogic = trimmedCode.length > starterTrimmed.length + 10;
+        
+        result = {
+          isCorrect: hasLogic && errors.length === 0,
+          feedbackSummary: errors.length > 0 
+            ? `Found ${errors.length} issue(s). Review and fix them to continue!`
+            : hasLogic
+              ? "Your code looks structurally sound! The cloud AI wasn't available for deep analysis, but your syntax checks passed. Great work!"
+              : "Add more code to complete the exercise. Look at the description for guidance.",
+          errorsFound: errors,
+          suggestions: suggestions.length > 0 ? suggestions : [{ type: "best_practice", message: "Keep coding!", explanation: "The local evaluator checked your syntax. For deeper analysis, try again when the cloud AI is available.", codeSnippet: "" }],
+          improvedCodeSnippet: undefined
+        };
+      }
       
       setFeedback(result);
 
@@ -156,7 +206,7 @@ Return ONLY a valid JSON object with this structure:
         addDocumentNonBlocking(attemptRef, {
           userId: user.uid,
           exerciseId: currentExercise.id,
-          attemptNumber: 1, // Simplified for MVP
+          attemptNumber: 1,
           submittedCode: code,
           isCorrect: result.isCorrect,
           feedbackSummary: result.feedbackSummary,
