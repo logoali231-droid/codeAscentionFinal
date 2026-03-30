@@ -6,10 +6,11 @@ import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { BrainCircuit, Cpu, Sparkles, Wand2, Terminal, Code2, ChevronLeft, RotateCcw } from "lucide-react";
+import { BrainCircuit, Cpu, Sparkles, Wand2, Terminal, Code2, ChevronLeft, RotateCcw, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { generateStructuredAIOutput, clearAiCache } from "@/ai/client-ai";
+import { findAllLocalChallenges, type LocalChallenge } from "@/ai/local-challenges";
 
 interface CustomizedChallenge {
   challengeTitle: string;
@@ -27,6 +28,7 @@ export default function PracticePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [retryStatus, setRetryStatus] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<CustomizedChallenge | null>(null);
+  const [source, setSource] = useState<"local" | "cloud" | null>(null);
 
   const handleGenerate = async () => {
     if (!weakness.trim()) {
@@ -37,17 +39,32 @@ export default function PracticePage() {
     setIsGenerating(true);
     setRetryStatus(null);
     setChallenge(null);
+    setSource(null);
 
+    // STEP 1: Always try local database FIRST (instant, free, offline)
+    const localMatches = findAllLocalChallenges(weakness);
+    if (localMatches.length > 0) {
+      const picked = localMatches[Math.floor(Math.random() * localMatches.length)];
+      setChallenge({
+        challengeTitle: picked.challengeTitle,
+        challengeDescription: picked.challengeDescription,
+        problemStatement: picked.problemStatement,
+        inputExamples: picked.inputExamples,
+        outputExamples: picked.outputExamples,
+        hints: picked.hints,
+      });
+      setSource("local");
+      setIsGenerating(false);
+      setRetryStatus(null);
+      return;
+    }
+
+    // STEP 2: If no local match, try Gemini cloud as bonus
     try {
-      const prompt = `You are an experienced programming instructor. Your goal is to create a customized coding challenge for a user.
-
-Generate a coding challenge that specifically targets the following weaknesses identified in the user's performance: ${weakness}.
-
-The challenge should primarily be solvable using the JavaScript programming language.
-
-Ensure the challenge has a clear problem statement, provides concrete input examples, and their corresponding expected outputs. Optionally, provide some helpful hints.
-
-Return ONLY a valid JSON object with the following structure:
+      setRetryStatus("Searching Cloud AI...");
+      const prompt = `You are an experienced programming instructor. Generate a coding challenge targeting: ${weakness}.
+The challenge should be solvable in JavaScript with clear examples.
+Return ONLY valid JSON:
 {
   "challengeTitle": "string",
   "challengeDescription": "string",
@@ -55,24 +72,32 @@ Return ONLY a valid JSON object with the following structure:
   "inputExamples": ["string"],
   "outputExamples": ["string"],
   "hints": ["string"]
-}
-`;
+}`;
 
       const data = await generateStructuredAIOutput<CustomizedChallenge>(
         prompt, 
         undefined, 
         true, 
-        (attempt) => setRetryStatus(`AI Busy... Retry ${attempt}/6`)
+        (attempt) => setRetryStatus(`Cloud AI Retry ${attempt}/6`)
       );
       setChallenge(data);
+      setSource("cloud");
     } catch (error: any) {
-      console.error("Practice generation error:", error);
+      // STEP 3: If cloud also fails, fall back to a random local challenge
+      console.warn("Cloud AI failed, serving random local challenge:", error.message);
+      const fallback = localMatches[0] || findAllLocalChallenges("recursion")[0];
+      setChallenge({
+        challengeTitle: fallback.challengeTitle,
+        challengeDescription: fallback.challengeDescription,
+        problemStatement: fallback.problemStatement,
+        inputExamples: fallback.inputExamples,
+        outputExamples: fallback.outputExamples,
+        hints: fallback.hints,
+      });
+      setSource("local");
       toast({ 
-        title: error.message?.includes("quota") ? "Limit Reached" : "AI Generation Failed", 
-        description: error.message?.includes("quota") 
-          ? "The AI is currently at maximum capacity. Please wait a minute and try again." 
-          : (error.message || "Ensure your API key is correctly configured."), 
-        variant: "destructive" 
+        title: "Using Local Brain", 
+        description: "Cloud AI is busy. Here's a challenge from your device's local intelligence!",
       });
     } finally {
       setIsGenerating(false);
@@ -82,8 +107,9 @@ Return ONLY a valid JSON object with the following structure:
 
   const handleResetAI = () => {
     clearAiCache();
-    toast({ title: "AI Environment Reset", description: "Memory cleared. Retrying with fresh state." });
-    setTimeout(() => window.location.reload(), 1000);
+    setChallenge(null);
+    setSource(null);
+    toast({ title: "AI Environment Reset", description: "Memory cleared." });
   };
 
   return (
@@ -147,6 +173,17 @@ Return ONLY a valid JSON object with the following structure:
               animate={{ opacity: 1, scale: 1 }}
               className="space-y-6"
             >
+              {/* Source Badge */}
+              <div className="flex justify-center">
+                <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border ${
+                  source === 'local' 
+                    ? 'bg-accent/10 border-accent/30 text-accent' 
+                    : 'bg-primary/10 border-primary/30 text-primary'
+                }`}>
+                  {source === 'local' ? '⚡ Local Brain — Instant & Free' : '☁️ Cloud AI — Gemini'}
+                </span>
+              </div>
+
               <Card className="border-accent/40 bg-accent/5 overflow-hidden">
                 <CardHeader className="border-b border-accent/20">
                   <div className="flex justify-between items-center">
