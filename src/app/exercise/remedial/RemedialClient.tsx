@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { getClientAiModel } from "@/ai/client-ai";
+import { generateStructuredAIOutput } from "@/ai/client-ai";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore } from "@/firebase";
 import { collection, serverTimestamp, addDoc } from "firebase/firestore";
@@ -37,7 +37,9 @@ export default function RemedialClient() {
   const [exercise, setExercise] = useState<RemedialExercise | null>(null);
   const [code, setCode] = useState("");
   const [isGenerating, setIsGenerating] = useState(true);
+  const [retryStatus, setRetryStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [evalRetryStatus, setEvalRetryStatus] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<RemedialFeedback | null>(null);
   const [hint, setHint] = useState<string | null>(null);
 
@@ -45,11 +47,11 @@ export default function RemedialClient() {
     async function generateExercise() {
       if (!user || !db) return;
       setIsGenerating(true);
+      setRetryStatus(null);
       try {
         const errors = await getPastUserErrorsSummary(db, user.uid);
         const pacing = await getUserPacingMetrics(db, user.uid);
 
-        const model = getClientAiModel();
         const prompt = `You are a world-class programming tutor. You are creating a "Remedial Mission" for a student who has been struggling with specific concepts.
         
 USER ERROR HISTORY:
@@ -69,9 +71,12 @@ Return ONLY a valid JSON object:
   "language": "string (e.g. JavaScript, Python)"
 }`;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const generated = JSON.parse(response.text()) as RemedialExercise;
+        const generated = await generateStructuredAIOutput<RemedialExercise>(
+          prompt, 
+          "gemini-2.0-flash", 
+          true, 
+          (attempt) => setRetryStatus(`Synthesizing... Retry ${attempt}/3`)
+        );
         setExercise(generated);
         setCode(generated.starterCode);
       } catch (error: any) {
@@ -79,6 +84,7 @@ Return ONLY a valid JSON object:
         toast({ title: "Failed to synthesize mission.", variant: "destructive" });
       } finally {
         setIsGenerating(false);
+        setRetryStatus(null);
       }
     }
 
@@ -93,9 +99,9 @@ Return ONLY a valid JSON object:
     if (!code.trim() || !exercise) return;
     setIsSubmitting(true);
     setFeedback(null);
+    setEvalRetryStatus(null);
 
     try {
-      const model = getClientAiModel();
       const prompt = `Evaluate this student's response to the Remedial Mission.
       
 MISSION: ${exercise.title}
@@ -113,13 +119,16 @@ Return ONLY a valid JSON object:
   "suggestions": [{ "type": "logic" | "style", "message": "string", "explanation": "string" }]
 }`;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const evalResult = JSON.parse(response.text()) as RemedialFeedback;
+      const evalResult = await generateStructuredAIOutput<RemedialFeedback>(
+        prompt, 
+        "gemini-2.0-flash", 
+        true, 
+        (attempt) => setEvalRetryStatus(`Checking... R${attempt}`)
+      );
       setFeedback(evalResult);
 
       if (evalResult.isCorrect && user && db) {
-        // Record as "Extra Practice" (Option B)
+        // Record as "Extra Practice"
         const attemptRef = collection(db, "users", user.uid, "exerciseAttempts");
         await addDoc(attemptRef, {
           userId: user.uid,
@@ -134,6 +143,7 @@ Return ONLY a valid JSON object:
       toast({ title: "Evaluation failed.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
+      setEvalRetryStatus(null);
     }
   };
 

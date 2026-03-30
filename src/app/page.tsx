@@ -12,7 +12,7 @@ import { signOutUser } from "@/firebase/auth";
 import { useRouter } from "next/navigation";
 import { getPastUserErrorsSummary, getUserPacingMetrics } from "@/lib/user-progress";
 import { useFirestore } from "@/firebase";
-import { getClientAiModel } from "@/ai/client-ai";
+import { generateStructuredAIOutput } from "@/ai/client-ai";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,17 +41,18 @@ export default function Home() {
           setHasRecentStruggles(true);
           const pacing = await getUserPacingMetrics(db, user.uid);
           
-          const model = getClientAiModel();
           const prompt = `You are an encouraging AI coding coach. Based on these recent user errors and their learning pace, provide a brief (1-2 sentences), highly motivating insight on what they should focus on next.
           
 ERRORS: ${errors}
 PACING: ${pacing}
 
-Return ONLY the text of the insight.`;
+Return ONLY a valid JSON object:
+{
+  "insight": "string"
+}`;
           
-          const result = await model.generateContent(prompt);
-          const response = await result.response;
-          setAiInsight(response.text());
+          const res = await generateStructuredAIOutput<{insight: string}>(prompt, "gemini-2.0-flash", true);
+          setAiInsight(res.insight);
         }
       } catch (err: any) {
         console.error("AI Insight error:", err);

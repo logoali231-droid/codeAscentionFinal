@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { getClientAiModel } from "@/ai/client-ai";
+import { generateStructuredAIOutput } from "@/ai/client-ai";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface FeedbackError {
@@ -49,9 +49,11 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
 
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [retryStatus, setRetryStatus] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<PersonalizedCodeFeedback | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [isHintLoading, setIsHintLoading] = useState(false);
+  const [hintRetryStatus, setHintRetryStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -81,10 +83,12 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
     }
 
     setIsSubmitting(true);
+    setRetryStatus(null);
     setFeedback(null);
 
     try {
       let pastUserErrors = undefined;
+      // ... same errorSummary logic ...
       if (user && db) {
         const errorSummary = await getPastUserErrorsSummary(db, user.uid);
         if (errorSummary) {
@@ -92,7 +96,6 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
         }
       }
 
-      const model = getClientAiModel();
       const prompt = `You are an expert programming tutor designed to provide comprehensive, personalized feedback on user-submitted code.
 Your goal is to help the user understand their mistakes, learn efficiently, and improve their coding skills.
 
@@ -124,9 +127,12 @@ Return ONLY a valid JSON object with this structure:
 }
 `;
 
-      const aiResult = await model.generateContent(prompt);
-      const response = await aiResult.response;
-      const result = JSON.parse(response.text()) as PersonalizedCodeFeedback;
+      const result = await generateStructuredAIOutput<PersonalizedCodeFeedback>(
+        prompt, 
+        "gemini-2.0-flash", 
+        true, 
+        (attempt) => setRetryStatus(`Analyzing... Retry ${attempt}/3`)
+      );
       
       setFeedback(result);
 
@@ -164,14 +170,16 @@ Return ONLY a valid JSON object with this structure:
         toast({ title: "Keep trying! Check the feedback.", variant: "default" });
       }
     } catch (error: any) {
-      toast({ title: "Failed to analyze code.", description: error.message || "An unknown error occurred.", variant: "destructive" });
+      toast({ title: "Evaluation failed.", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
+      setRetryStatus(null);
     }
   };
 
   const handleGetHint = async () => {
     setIsHintLoading(true);
+    setHintRetryStatus(null);
     setHint(null);
 
     try {
@@ -187,7 +195,6 @@ Return ONLY a valid JSON object with this structure:
         pacingMetrics = pacing;
       }
 
-      const model = getClientAiModel();
       const prompt = `You are a supportive AI coding tutor. A student is working on the following exercise and needs a hint.
       
 EXERCISE: ${currentExercise.title}
@@ -206,15 +213,23 @@ If they have a specific error in their code, point them in the right direction.
 If they are a fast learner, make the hint more of a mental nudge. 
 If they are struggling, provide more conceptual scaffolding.
 
-Return ONLY the hint text as a string.`;
+Return ONLY a valid JSON object:
+{
+  "hint": "string"
+}`;
 
-      const aiResult = await model.generateContent(prompt);
-      const response = await aiResult.response;
-      setHint(response.text());
+      const res = await generateStructuredAIOutput<{hint: string}>(
+        prompt, 
+        "gemini-2.0-flash", 
+        true, 
+        (attempt) => setHintRetryStatus(`R${attempt}`)
+      );
+      setHint(res.hint);
     } catch (error: any) {
       toast({ title: "Could not generate hint.", description: "Try again in a moment.", variant: "destructive" });
     } finally {
       setIsHintLoading(false);
+      setHintRetryStatus(null);
     }
   };
 
@@ -366,7 +381,7 @@ Return ONLY the hint text as a string.`;
           ) : (
             <Lightbulb className="w-4 h-4 text-accent" />
           )}
-          {isHintLoading ? "Thinking..." : "Get Hint"}
+          {isHintLoading ? (hintRetryStatus || "Wait...") : "Get Hint"}
         </Button>
         <Button 
           className="flex-[2] gap-2 glow-blue font-bold uppercase text-xs tracking-widest"
@@ -383,7 +398,7 @@ Return ONLY the hint text as a string.`;
           ) : (
             <Send className="w-4 h-4" />
           )}
-          {isSubmitting ? "ANALYZING..." : "SUBMIT CODE"}
+          {isSubmitting ? (retryStatus || "ANALYZING...") : "SUBMIT CODE"}
         </Button>
       </footer>
     </div>

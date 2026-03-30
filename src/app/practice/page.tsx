@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { BrainCircuit, Cpu, Sparkles, Wand2, Terminal, Code2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { getClientAiModel } from "@/ai/client-ai";
+import { generateStructuredAIOutput } from "@/ai/client-ai";
 
 interface CustomizedChallenge {
   challengeTitle: string;
@@ -24,6 +24,7 @@ export default function PracticePage() {
   const { toast } = useToast();
   const [weakness, setWeakness] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [retryStatus, setRetryStatus] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<CustomizedChallenge | null>(null);
 
   const handleGenerate = async () => {
@@ -33,10 +34,10 @@ export default function PracticePage() {
     }
 
     setIsGenerating(true);
+    setRetryStatus(null);
     setChallenge(null);
 
     try {
-      const model = getClientAiModel();
       const prompt = `You are an experienced programming instructor. Your goal is to create a customized coding challenge for a user.
 
 Generate a coding challenge that specifically targets the following weaknesses identified in the user's performance: ${weakness}.
@@ -56,21 +57,25 @@ Return ONLY a valid JSON object with the following structure:
 }
 `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const data = JSON.parse(response.text());
+      const data = await generateStructuredAIOutput<CustomizedChallenge>(
+        prompt, 
+        "gemini-2.0-flash", 
+        true, 
+        (attempt) => setRetryStatus(`AI Busy... Retry ${attempt}/3`)
+      );
       setChallenge(data);
     } catch (error: any) {
       console.error("Practice generation error:", error);
       toast({ 
-        title: error.message?.includes("quota") ? "Quota Limit Reached" : "AI Generation Failed", 
+        title: error.message?.includes("quota") ? "Limit Reached" : "AI Generation Failed", 
         description: error.message?.includes("quota") 
-          ? "You've hit your free tier limit. Please wait a moment or check your API key settings." 
-          : (error.message || "Ensure your API key is correctly configured in .env.local"), 
+          ? "The AI is currently at maximum capacity. Please wait a minute and try again." 
+          : (error.message || "Ensure your API key is correctly configured."), 
         variant: "destructive" 
       });
     } finally {
       setIsGenerating(false);
+      setRetryStatus(null);
     }
   };
 
@@ -116,7 +121,7 @@ Return ONLY a valid JSON object with the following structure:
               ) : (
                 <Wand2 className="w-5 h-5" />
               )}
-              {isGenerating ? "Synthesizing Challenge..." : "Initiate AI Forge"}
+              {isGenerating ? (retryStatus || "Synthesizing...") : "Initiate AI Forge"}
             </Button>
           </div>
         </section>
