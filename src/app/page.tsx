@@ -4,12 +4,15 @@
 import { useState, useEffect } from "react";
 import { SkillNode } from "@/components/SkillNode";
 import { BottomNav } from "@/components/BottomNav";
-import { Rocket, Zap, Crown, ChevronDown, BrainCircuit, LogOut } from "lucide-react";
+import { Rocket, Zap, Crown, ChevronDown, BrainCircuit, LogOut, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { COURSES } from "@/app/lib/courses-data";
 import { useUser, useAuth } from "@/firebase/provider";
 import { signOutUser } from "@/firebase/auth";
 import { useRouter } from "next/navigation";
+import { getPastUserErrorsSummary, getUserPacingMetrics } from "@/lib/user-progress";
+import { useFirestore } from "@/firebase";
+import { getClientAiModel } from "@/ai/client-ai";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +25,42 @@ export default function Home() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const db = useFirestore();
+
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [hasRecentStruggles, setHasRecentStruggles] = useState(false);
+  const [isInsightLoading, setIsInsightLoading] = useState(false);
+
+  useEffect(() => {
+    async function loadAiInsights() {
+      if (!user || !db) return;
+      setIsInsightLoading(true);
+      try {
+        const errors = await getPastUserErrorsSummary(db, user.uid);
+        if (errors) {
+          setHasRecentStruggles(true);
+          const pacing = await getUserPacingMetrics(db, user.uid);
+          
+          const model = getClientAiModel();
+          const prompt = `You are an encouraging AI coding coach. Based on these recent user errors and their learning pace, provide a brief (1-2 sentences), highly motivating insight on what they should focus on next.
+          
+ERRORS: ${errors}
+PACING: ${pacing}
+
+Return ONLY the text of the insight.`;
+          
+          const result = await model.generateContent(prompt);
+          const response = await result.response;
+          setAiInsight(response.text());
+        }
+      } catch (err: any) {
+        console.error("AI Insight error:", err);
+      } finally {
+        setIsInsightLoading(false);
+      }
+    }
+    loadAiInsights();
+  }, [user, db]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -86,8 +125,59 @@ export default function Home() {
         </div>
       </header>
 
+      {/* AI Tutor Insight */}
+      <AnimatePresence>
+        {aiInsight && (
+          <motion.section 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="px-6 mb-6"
+          >
+            <div className="bg-primary/10 border-2 border-primary/30 rounded-2xl p-4 flex gap-4 items-center glow-blue">
+              <div className="bg-primary p-2 rounded-lg">
+                <BrainCircuit className="text-white w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Coach's Strategic Note</h4>
+                <p className="text-sm font-medium leading-tight italic">{aiInsight}</p>
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* Adaptive Remedial Card */}
+      <AnimatePresence>
+        {hasRecentStruggles && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="px-6 mb-8"
+          >
+            <div 
+              onClick={() => router.push("/exercise/remedial")}
+              className="bg-accent/10 border-2 border-accent/40 rounded-2xl p-5 cursor-pointer hover:bg-accent/20 transition-all group overflow-hidden relative"
+            >
+              <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
+                <Zap size={100} className="text-accent" />
+              </div>
+              <div className="flex items-center gap-3 mb-3">
+                <Sparkles className="w-5 h-5 text-accent animate-pulse" />
+                <h3 className="font-headline font-bold text-lg text-accent tracking-tighter uppercase">Special Remedial Mission</h3>
+              </div>
+              <p className="text-sm text-foreground/80 mb-4 max-w-[80%] italic">
+                Our AI detected some hurdles in your recent sessions. We've synthesized a specific training exercise to help you overcome them.
+              </p>
+              <Button size="sm" className="bg-accent text-accent-foreground font-bold uppercase text-[10px] tracking-widest gap-2">
+                Launch Mission <Rocket className="w-3 h-3" />
+              </Button>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
       {/* Mastery Tree */}
-      <main className="px-6 pt-12">
+      <main className="px-6 pt-4">
         <AnimatePresence mode="wait">
           <motion.div 
             key={currentCourse.id}

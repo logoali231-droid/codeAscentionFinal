@@ -63,8 +63,10 @@ Return ONLY a valid JSON object with the following structure:
     } catch (error: any) {
       console.error("Practice generation error:", error);
       toast({ 
-        title: "Failed to generate challenge.", 
-        description: error.message || "Ensure your API key is correctly configured in .env", 
+        title: error.message?.includes("quota") ? "Quota Limit Reached" : "AI Generation Failed", 
+        description: error.message?.includes("quota") 
+          ? "You've hit your free tier limit. Please wait a moment or check your API key settings." 
+          : (error.message || "Ensure your API key is correctly configured in .env.local"), 
         variant: "destructive" 
       });
     } finally {

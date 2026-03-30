@@ -6,13 +6,13 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  */
 
 // For standalone device builds, we ensure the key is always available.
-const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "AIzaSyAQB64iuXlVOH8sBsp1PPV5ehC6bGTf7-g";
+const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 if (!API_KEY && typeof window !== 'undefined') {
   console.warn("NEXT_PUBLIC_GEMINI_API_KEY is missing. AI features will not work.");
 }
 
-const genAI = new GoogleGenerativeAI(API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
 
 export const getClientAiModel = (modelName: string = "gemini-2.0-flash") => {
   return genAI.getGenerativeModel({ 

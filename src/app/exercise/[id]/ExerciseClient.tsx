@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Send, Play, Lightbulb, CheckCircle2, AlertCircle, Zap, Rocket } from "lucide-react";
+import { ChevronLeft, Send, Play, Lightbulb, CheckCircle2, AlertCircle, Zap, Rocket, BrainCircuit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -50,6 +50,8 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<PersonalizedCodeFeedback | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+  const [isHintLoading, setIsHintLoading] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -124,7 +126,7 @@ Return ONLY a valid JSON object with this structure:
 
       const aiResult = await model.generateContent(prompt);
       const response = await aiResult.response;
-      const result = JSON.parse(response.text());
+      const result = JSON.parse(response.text()) as PersonalizedCodeFeedback;
       
       setFeedback(result);
 
@@ -165,6 +167,54 @@ Return ONLY a valid JSON object with this structure:
       toast({ title: "Failed to analyze code.", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGetHint = async () => {
+    setIsHintLoading(true);
+    setHint(null);
+
+    try {
+      let pastUserErrors = "";
+      let pacingMetrics = "";
+      
+      if (user && db) {
+        const [errors, pacing]: [string, string] = await Promise.all([
+          getPastUserErrorsSummary(db, user.uid),
+          import("@/lib/user-progress").then(m => m.getUserPacingMetrics(db, user.uid))
+        ]);
+        pastUserErrors = errors;
+        pacingMetrics = pacing;
+      }
+
+      const model = getClientAiModel();
+      const prompt = `You are a supportive AI coding tutor. A student is working on the following exercise and needs a hint.
+      
+EXERCISE: ${currentExercise.title}
+DESCRIPTION: ${currentExercise.description}
+CURRENT CODE:
+\`\`\`${currentExercise.language}
+${code}
+\`\`\`
+
+CONTEXT:
+${pastUserErrors ? `User's recent struggles:\n${pastUserErrors}` : ""}
+${pacingMetrics ? `Learner profile:\n${pacingMetrics}` : ""}
+
+Provide a subtle, encouraging hint that helps the student overcome their current obstacle without giving away the full solution. 
+If they have a specific error in their code, point them in the right direction. 
+If they are a fast learner, make the hint more of a mental nudge. 
+If they are struggling, provide more conceptual scaffolding.
+
+Return ONLY the hint text as a string.`;
+
+      const aiResult = await model.generateContent(prompt);
+      const response = await aiResult.response;
+      setHint(response.text());
+    } catch (error: any) {
+      toast({ title: "Could not generate hint.", description: "Try again in a moment.", variant: "destructive" });
+    } finally {
+      setIsHintLoading(false);
     }
   };
 
@@ -280,6 +330,25 @@ Return ONLY a valid JSON object with this structure:
             </motion.div>
           )}
         </AnimatePresence>
+
+        <AnimatePresence>
+          {hint && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-primary/10 border-2 border-primary/30 p-4 rounded-xl flex items-start gap-3 mt-4"
+            >
+              <Lightbulb className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h5 className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">AI Tactical Hint</h5>
+                <p className="text-sm italic text-foreground/90">{hint}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setHint(null)} className="h-6 w-6 p-0 hover:bg-primary/20">
+                ×
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Action Bar */}
@@ -287,10 +356,17 @@ Return ONLY a valid JSON object with this structure:
         <Button 
           variant="secondary" 
           className="flex-1 gap-2 font-bold uppercase text-xs tracking-widest"
-          onClick={() => toast({ title: "Focus on the objective description above!" })}
+          onClick={handleGetHint}
+          disabled={isHintLoading}
         >
-          <Lightbulb className="w-4 h-4 text-accent" />
-          Get Hint
+          {isHintLoading ? (
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+              <BrainCircuit className="w-4 h-4 text-accent" />
+            </motion.div>
+          ) : (
+            <Lightbulb className="w-4 h-4 text-accent" />
+          )}
+          {isHintLoading ? "Thinking..." : "Get Hint"}
         </Button>
         <Button 
           className="flex-[2] gap-2 glow-blue font-bold uppercase text-xs tracking-widest"
