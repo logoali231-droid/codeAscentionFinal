@@ -73,9 +73,9 @@ Return ONLY a valid JSON object:
 
         const generated = await generateStructuredAIOutput<RemedialExercise>(
           prompt, 
-          "gemini-2.0-flash", 
+          undefined, 
           true, 
-          (attempt) => setRetryStatus(`Synthesizing... Retry ${attempt}/3`)
+          (attempt) => setRetryStatus(`Synthesizing... Retry ${attempt}/6`)
         );
         setExercise(generated);
         setCode(generated.starterCode);
@@ -121,9 +121,9 @@ Return ONLY a valid JSON object:
 
       const evalResult = await generateStructuredAIOutput<RemedialFeedback>(
         prompt, 
-        "gemini-2.0-flash", 
+        undefined, 
         true, 
-        (attempt) => setEvalRetryStatus(`Checking... R${attempt}`)
+        (attempt) => setEvalRetryStatus(`Checking... R${attempt}/6`)
       );
       setFeedback(evalResult);
 

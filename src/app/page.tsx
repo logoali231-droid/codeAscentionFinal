@@ -51,7 +51,7 @@ Return ONLY a valid JSON object:
   "insight": "string"
 }`;
           
-          const res = await generateStructuredAIOutput<{insight: string}>(prompt, "gemini-2.0-flash", true);
+          const res = await generateStructuredAIOutput<{insight: string}>(prompt, undefined, true);
           setAiInsight(res.insight);
         }
       } catch (err: any) {

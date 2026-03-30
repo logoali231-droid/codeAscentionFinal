@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { generateStructuredAIOutput } from "@/ai/client-ai";
+import { generateStructuredAIOutput, generateLocalHint } from "@/ai/client-ai";
+import { localAi } from "@/ai/local-client";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface FeedbackError {
@@ -54,6 +55,19 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
   const [hint, setHint] = useState<string | null>(null);
   const [isHintLoading, setIsHintLoading] = useState(false);
   const [hintRetryStatus, setHintRetryStatus] = useState<string | null>(null);
+  const [localAiStatus, setLocalAiStatus] = useState<string>("Local AI Idle");
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+
+  useEffect(() => {
+    localAi.setProgressCallback((data: any) => {
+      if (data.status === 'initiate') setLocalAiStatus("Initializing Local AI...");
+      if (data.status === 'progress') {
+        setLocalAiStatus(`Downloading... ${Math.round(data.progress)}%`);
+        setDownloadProgress(data.progress);
+      }
+      if (data.status === 'ready') setLocalAiStatus("Local AI Ready (Offline)");
+    });
+  }, []);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -129,9 +143,9 @@ Return ONLY a valid JSON object with this structure:
 
       const result = await generateStructuredAIOutput<PersonalizedCodeFeedback>(
         prompt, 
-        "gemini-2.0-flash", 
+        undefined, 
         true, 
-        (attempt) => setRetryStatus(`Analyzing... Retry ${attempt}/3`)
+        (attempt) => setRetryStatus(`Analyzing... Retry ${attempt}/6`)
       );
       
       setFeedback(result);
@@ -218,13 +232,20 @@ Return ONLY a valid JSON object:
   "hint": "string"
 }`;
 
-      const res = await generateStructuredAIOutput<{hint: string}>(
-        prompt, 
-        "gemini-2.0-flash", 
-        true, 
-        (attempt) => setHintRetryStatus(`R${attempt}`)
-      );
-      setHint(res.hint);
+      try {
+        const res = await generateStructuredAIOutput<{hint: string}>(
+          prompt, 
+          undefined, 
+          true, 
+          (attempt) => setHintRetryStatus(`R${attempt}/6`)
+        );
+        setHint(res.hint);
+      } catch (cloudErr) {
+        console.warn("Cloud AI failed, triggering Local Brain...");
+        setHintRetryStatus("Local Brain...");
+        const localRes = await generateLocalHint(currentExercise.title, currentExercise.description, code);
+        setHint(localRes);
+      }
     } catch (error: any) {
       toast({ title: "Could not generate hint.", description: "Try again in a moment.", variant: "destructive" });
     } finally {
@@ -250,6 +271,11 @@ Return ONLY a valid JSON object:
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Skill: {currentExercise.title}</span>
           </div>
           <Progress value={feedback?.isCorrect ? 100 : 40} className="h-1.5 transition-all" />
+          <div className="flex justify-between items-center mt-2">
+            <span className={`text-[8px] font-bold uppercase tracking-tighter ${localAiStatus === 'Local AI Ready (Offline)' ? 'text-accent' : 'text-primary'}`}>
+              {localAiStatus}
+            </span>
+          </div>
         </div>
       </header>
 

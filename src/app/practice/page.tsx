@@ -1,15 +1,15 @@
-
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { BrainCircuit, Cpu, Sparkles, Wand2, Terminal, Code2 } from "lucide-react";
+import { BrainCircuit, Cpu, Sparkles, Wand2, Terminal, Code2, ChevronLeft, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { generateStructuredAIOutput } from "@/ai/client-ai";
+import { generateStructuredAIOutput, clearAiCache } from "@/ai/client-ai";
 
 interface CustomizedChallenge {
   challengeTitle: string;
@@ -22,6 +22,7 @@ interface CustomizedChallenge {
 
 export default function PracticePage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [weakness, setWeakness] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [retryStatus, setRetryStatus] = useState<string | null>(null);
@@ -59,9 +60,9 @@ Return ONLY a valid JSON object with the following structure:
 
       const data = await generateStructuredAIOutput<CustomizedChallenge>(
         prompt, 
-        "gemini-2.0-flash", 
+        undefined, 
         true, 
-        (attempt) => setRetryStatus(`AI Busy... Retry ${attempt}/3`)
+        (attempt) => setRetryStatus(`AI Busy... Retry ${attempt}/6`)
       );
       setChallenge(data);
     } catch (error: any) {
@@ -79,14 +80,27 @@ Return ONLY a valid JSON object with the following structure:
     }
   };
 
+  const handleResetAI = () => {
+    clearAiCache();
+    toast({ title: "AI Environment Reset", description: "Memory cleared. Retrying with fresh state." });
+    setTimeout(() => window.location.reload(), 1000);
+  };
+
   return (
     <div className="pb-32 min-h-screen p-6">
-      <header className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Cpu className="text-primary w-5 h-5" />
-          <h1 className="font-headline text-2xl font-bold tracking-tight">AI TRAINING LAB</h1>
+      <header className="mb-8 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="font-headline text-2xl font-bold tracking-tight">AI TRAINING LAB</h1>
+            <p className="text-sm text-muted-foreground">Target specific weaknesses with real-time generated exercises.</p>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">Target specific weaknesses with real-time generated exercises.</p>
+        <Button variant="outline" size="sm" onClick={handleResetAI} className="gap-2 text-[10px] uppercase font-bold tracking-widest border-primary/20 hover:bg-primary/10">
+          <RotateCcw className="w-3 h-3" /> Reset AI
+        </Button>
       </header>
 
       <div className="space-y-8">
