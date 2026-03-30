@@ -15,6 +15,11 @@ if (!API_KEY && typeof window !== 'undefined') {
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
 
 export const getClientAiModel = (modelName: string = "gemini-2.0-flash") => {
+  const key = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  if (!key && typeof window !== 'undefined') {
+    throw new Error("NEXT_PUBLIC_GEMINI_API_KEY is missing from the browser environment. If you just added it to .env.local, please restart your 'npm run dev' terminal.");
+  }
+  
   return genAI.getGenerativeModel({ 
     model: modelName,
     generationConfig: {
