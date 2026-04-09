@@ -2,8 +2,7 @@ import { CreateMLCEngine, MLCEngine, InitProgressCallback } from "@mlc-ai/web-ll
 
 // Qwen2.5-Coder is specifically trained on code — far smarter than Phi-3 for a coding tutor.
 // Free, open source. ~4.5GB first-time download, cached permanently after.
-const SELECTED_MODEL = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
-
+const SELECTED_MODEL = "Phi-3-mini-4k-instruct-q4f16_1-MLC";
 let engineInstance: MLCEngine | null = null;
 let isInitializing = false;
 
@@ -27,10 +26,10 @@ export async function getLocalEngine(initProgressCallback?: InitProgressCallback
   }
 
   if (isInitializing) {
-     while(isInitializing && !engineInstance) {
-         await new Promise(r => setTimeout(r, 500));
-     }
-     if (engineInstance) return engineInstance;
+    while (isInitializing && !engineInstance) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+    if (engineInstance) return engineInstance;
   }
 
   isInitializing = true;
@@ -61,7 +60,7 @@ export function safeParse<T>(text: string): T | null {
 export async function generateCustomMission(language: string, level: string, history: string, updateProgress?: InitProgressCallback) {
   try {
     const engine = await getLocalEngine(updateProgress);
-    
+
     // We enforce JSON format by instructing Phi-3 heavily
     const prompt = `You are LocalBrain, an expert programming tutor in a sci-fi cyber training simulator.
 Generate a coding mission for the language: ${language}.
@@ -100,12 +99,12 @@ CRITICAL: Output ONLY a valid JSON object matching this schema. NO markdown back
 }
 
 export async function generateStructuredAIOutput<T>(
-    prompt: string, 
-    updateProgress?: InitProgressCallback
+  prompt: string,
+  updateProgress?: InitProgressCallback
 ) {
   try {
     const engine = await getLocalEngine(updateProgress);
-    
+
     const maxedPrompt = `${prompt}
     
 CRITICAL INSTRUCTION: Output ONLY a valid JSON object. No markdown backticks, no conversational text.
@@ -121,7 +120,7 @@ Expected JSON Schema keys: "isCorrect", "feedbackSummary", "errorsFound", "sugge
     });
 
     const text = reply.choices[0].message.content || "";
-    
+
     const parsed = safeParse<T>(text);
     if (!parsed) {
       console.warn("AI returned invalid JSON → using fallback. Raw text:", text);
