@@ -1,7 +1,8 @@
 import { CreateMLCEngine, MLCEngine, InitProgressCallback } from "@mlc-ai/web-llm";
 
-// Use Phi-3 as it's highly capable but small enough (1.8gb - 2.2gb) to reasonably run on Android WebGPU
-const SELECTED_MODEL = "Phi-3-mini-4k-instruct-q4f16_1-MLC";
+// Qwen2.5-Coder is specifically trained on code — far smarter than Phi-3 for a coding tutor.
+// Free, open source. ~4.5GB first-time download, cached permanently after.
+const SELECTED_MODEL = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
 
 let engineInstance: MLCEngine | null = null;
 let isInitializing = false;

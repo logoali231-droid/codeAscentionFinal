@@ -203,7 +203,7 @@ Pay special attention if they repeat these specific mistakes.` : "This is a clea
           {downloadProgress}
         </p>
         <p className="text-[10px] uppercase font-bold text-primary/50 mt-8 tracking-widest">
-           First-time boot requires ~2GB asset download. This will only happen once.
+           First-time boot requires ~4.5GB asset download. This will only happen once.
         </p>
       </div>
     );
