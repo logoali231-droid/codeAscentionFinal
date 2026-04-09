@@ -1,6 +1,8 @@
 import ExerciseClient from "./ExerciseClient";
 
-export default function ExercisePage({ params }: { params: { id: string } }) {
-  const { id } = params;
+type Params = Promise<{ id: string }>;
+
+export default async function ExercisePage({ params }: { params: Params }) {
+  const { id } = await params;
   return <ExerciseClient id={id} />;
 }
