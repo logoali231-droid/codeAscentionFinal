@@ -7,14 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { getClientAiModel, safeParse } from "@/ai/client-ai";
+import { safeParse, generateCustomMission, generateStructuredAIOutput } from "@/ai/client-ai";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { COURSES, Course, Skill } from "@/app/lib/courses-data";
-import { useAuth, useFirestore, useUser } from "@/firebase";
-import { doc, collection, serverTimestamp } from "firebase/firestore";
-import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { getPastUserErrorsSummary } from "@/lib/user-progress";
+import { localDb, LocalPilotProfile } from "@/lib/local-db";
 
 interface FeedbackError {
   line?: number;
@@ -35,47 +30,97 @@ interface PersonalizedCodeFeedback {
   feedbackSummary: string;
   errorsFound: FeedbackError[];
   suggestions: FeedbackSuggestion[];
-  improvedCodeSnippet?: string;
 }
 
 interface ExerciseClientProps {
-  id: string;
+  id: string; // Expected format: language_lvl_1 (e.g., python_lvl_1)
 }
 
 export default function ExerciseClient({ id }: ExerciseClientProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const db = useFirestore();
-  const { user, isUserLoading } = useUser();
 
+  const [profile, setProfile] = useState<LocalPilotProfile | null>(null);
+  const [language, setLanguage] = useState("javascript");
+  const [level, setLevel] = useState("1");
+  
+  const [mission, setMission] = useState<{title: string, description: string, starterCode: string} | null>(null);
+  const [isGenerating, setIsGenerating] = useState(true);
+  const [downloadProgress, setDownloadProgress] = useState<string>("Initializing Core Engine...");
+  const [noWebGpu, setNoWebGpu] = useState(false);
+  
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<PersonalizedCodeFeedback | null>(null);
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    const prof = localDb.getProfile();
+    if (!prof) {
       router.replace("/login");
+      return;
     }
-  }, [user, isUserLoading, router]);
+    setProfile(prof);
 
-  // Find current exercise in global data with correct types
-  const currentExercise = COURSES.flatMap((course: Course) => course.skills).find((skill: Skill) => skill.id === id) || {
-    id: "unknown",
-    title: "Unknown Challenge",
-    description: "Challenge details not found.",
-    language: "javascript",
-    starterCode: "// Start coding here...",
-    status: "locked" as const
-  };
+    // Parse ID
+    const parts = id.split("_lvl_");
+    if (parts.length === 2) {
+      setLanguage(parts[0]);
+      setLevel(parts[1]);
+    }
+  }, [id, router]);
 
   useEffect(() => {
-    if (currentExercise) {
-      setCode(currentExercise.starterCode);
+    async function loadMission() {
+      if (!language || !level) return;
+      setIsGenerating(true);
+      
+      const attempts = localDb.getAttempts();
+      const recentErrors = attempts
+        .filter(a => !a.isCorrect && a.exerciseId.startsWith(language))
+        .slice(-3)
+        .map(a => a.feedbackSummary)
+        .join(" | ");
+
+      const handleProgress = (report: any) => {
+          setDownloadProgress(report.text);
+      };
+
+      const newMission = await generateCustomMission(language, level, recentErrors, handleProgress);
+      
+      if (newMission) {
+        setMission(newMission);
+        setCode(newMission.starterCode);
+      } else {
+        toast({ title: "Failed to generate mission. Using fallback.", variant: "destructive" });
+        setMission({
+          title: "System Fallback Route",
+          description: `Declare a variable to prove the compiler is active.`,
+          starterCode: `// Write your ${language} code here\n`
+        });
+      }
+      setIsGenerating(false);
     }
-  }, [id, currentExercise]);
+
+    async function loadMissionSafe() {
+      try {
+        await loadMission();
+      } catch (err: any) {
+        if (err?.message?.startsWith("NO_WEBGPU")) {
+          setNoWebGpu(true);
+        } else {
+          toast({ title: "Engine Error", description: err.message, variant: "destructive" });
+        }
+        setIsGenerating(false);
+      }
+    }
+
+    if (profile) {
+      loadMissionSafe();
+    }
+  }, [language, level, profile, toast]);
 
   const handleSubmit = async () => {
-    if (!code.trim()) {
+    if (!code.trim() || !mission) {
       toast({ title: "Write some code first!", variant: "destructive" });
       return;
     }
@@ -84,75 +129,56 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
     setFeedback(null);
 
     try {
-      let pastUserErrors = undefined;
-      if (user && db) {
-        pastUserErrors = await getPastUserErrorsSummary(db, user.uid);
-      }
+      const attempts = localDb.getAttempts();
+      const recentErrors = attempts
+        .filter(a => !a.isCorrect && a.exerciseId.startsWith(language))
+        .slice(-3)
+        .map(a => a.feedbackSummary)
+        .join(" | ");
 
-      const model = getClientAiModel();
-      
-      // MAXED OUT SYSTEM PROMPT
       const prompt = `You are LocalBrain, an expert programming tutor. 
-Analyze the following ${currentExercise.language} code for the mission: "${currentExercise.title}".
+Analyze the following ${language} code for the mission: "${mission.title}".
 
-OBJECTIVE: ${currentExercise.description}
+OBJECTIVE: ${mission.description}
 
 USER CODE:
-\`\`\`${currentExercise.language}
+\`\`\`${language}
 ${code}
 \`\`\`
 
-${pastUserErrors ? `HISTORY ALERT: The user has struggled with these patterns recently:
-${pastUserErrors}
-Pay special attention if they repeat these specific mistakes.` : "This is a clean slate. Help them build great habits."}
+${recentErrors ? `HISTORY ALERT: The user has struggled with these patterns recently:
+${recentErrors}
+Pay special attention if they repeat these specific mistakes.` : "This is a clean slate. Help them build great habits."}`;
 
-CRITICAL INSTRUCTIONS:
-1. Be strict but encouraging.
-2. If the user repeats a mistake from their history, highlight it as a "Recurring Pattern" in the explanation.
-3. Suggest optimizations even if the code is correct.
-`;
+      const handleProgress = (report: any) => {
+          setDownloadProgress(report.text);
+      };
 
-      const aiResult = await model.generateContent(prompt);
-      const response = await aiResult.response;
-      const text = response.text();
+      const parsed = await generateStructuredAIOutput<PersonalizedCodeFeedback>(prompt, handleProgress);
 
-      const parsed = safeParse<PersonalizedCodeFeedback>(text);
-
-      if (!parsed) {
-        throw new Error("LocalBrain could not structure the feedback. Please try again.");
-      }
+      if (!parsed) throw new Error("LocalBrain could not structure the feedback.");
 
       setFeedback(parsed);
 
-      if (user && db) {
-        // Record Attempt
-        const attemptRef = collection(db, "users", user.uid, "exerciseAttempts");
-        addDocumentNonBlocking(attemptRef, {
-          userId: user.uid,
-          exerciseId: currentExercise.id,
-          submittedCode: code,
-          isCorrect: parsed.isCorrect,
-          feedbackSummary: parsed.feedbackSummary,
-          submittedAt: serverTimestamp(),
-        });
+      // Save to Local DB
+      localDb.saveAttempt({
+        exerciseId: id,
+        submittedCode: code,
+        isCorrect: parsed.isCorrect,
+        feedbackSummary: parsed.feedbackSummary,
+        submittedAt: new Date().toISOString()
+      });
 
-        // Update Progress if correct
-        if (parsed.isCorrect) {
-          const progressId = `${user.uid}_${currentExercise.id}`;
-          const progressRef = doc(db, "users", user.uid, "lessonProgress", progressId);
-          setDocumentNonBlocking(progressRef, {
-            id: progressId,
-            userId: user.uid,
-            lessonId: currentExercise.id,
-            status: "Completed",
-            completedAt: serverTimestamp(),
-            isMastered: true
-          }, { merge: true });
-
-          toast({ title: "Mission accomplished!", description: "You've mastered this skill." });
-        } else {
-          toast({ title: "Analysis complete", description: "LocalBrain found some areas for improvement.", variant: "default" });
-        }
+      if (parsed.isCorrect) {
+         localDb.saveProgress({
+           lessonId: id,
+           status: 'Completed',
+           completedAt: new Date().toISOString(),
+           isMastered: true
+         });
+         toast({ title: "Mission accomplished!", description: "You've mastered this phase." });
+      } else {
+         toast({ title: "Analysis complete", description: "LocalBrain found areas for improvement.", variant: "default" });
       }
 
     } catch (error: any) {
@@ -166,10 +192,58 @@ CRITICAL INSTRUCTIONS:
     }
   };
 
-  if (isUserLoading || !user) {
+  if (!profile || isGenerating) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center glow-blue text-primary animate-pulse">
-        <Rocket className="w-12 h-12" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center glow-blue text-primary p-6 text-center">
+        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
+           <BrainCircuit className="w-16 h-16 mb-4 opacity-80" />
+        </motion.div>
+        <h2 className="text-xl font-black uppercase tracking-widest italic animate-pulse">Offline Engine Syncing</h2>
+        <p className="text-sm text-muted-foreground mt-4 max-w-sm font-code break-words bg-secondary/30 p-4 rounded-xl border border-border">
+          {downloadProgress}
+        </p>
+        <p className="text-[10px] uppercase font-bold text-primary/50 mt-8 tracking-widest">
+           First-time boot requires ~2GB asset download. This will only happen once.
+        </p>
+      </div>
+    );
+  }
+
+  // No WebGPU — show friendly install instructions
+  if (noWebGpu) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-8 text-center">
+        <div className="text-6xl mb-6">🚀</div>
+        <h2 className="text-2xl font-black uppercase tracking-tighter italic mb-4 text-primary">
+          Open in Chrome
+        </h2>
+        <p className="text-muted-foreground text-sm max-w-sm leading-relaxed mb-8">
+          The offline AI requires <strong className="text-white">WebGPU</strong>, which only works in <strong className="text-white">Chrome</strong> — not inside this APK's browser. 
+        </p>
+        <div className="bg-secondary/20 border border-border rounded-3xl p-6 space-y-4 max-w-sm w-full text-left">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-primary">Install Steps</p>
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-3 items-start">
+              <span className="text-primary font-black">1.</span>
+              <span className="text-muted-foreground">Open <strong className="text-white">Chrome</strong> on your Android device</span>
+            </div>
+            <div className="flex gap-3 items-start">
+              <span className="text-primary font-black">2.</span>
+              <span className="text-muted-foreground">Navigate to the app URL shared with you</span>
+            </div>
+            <div className="flex gap-3 items-start">
+              <span className="text-primary font-black">3.</span>
+              <span className="text-muted-foreground">Tap the Chrome menu → <strong className="text-white">"Add to Home Screen"</strong></span>
+            </div>
+            <div className="flex gap-3 items-start">
+              <span className="text-primary font-black">4.</span>
+              <span className="text-muted-foreground">Open the installed icon — AI will work perfectly!</span>
+            </div>
+          </div>
+        </div>
+        <Button className="mt-8 rounded-2xl" variant="secondary" onClick={() => router.back()}>
+          Go Back
+        </Button>
       </div>
     );
   }
@@ -183,8 +257,8 @@ CRITICAL INSTRUCTIONS:
         </Button>
         <div className="flex-1">
           <div className="flex justify-between items-center mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">LocalBrain Syncing...</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{currentExercise.title}</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Phase {level} Active</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{mission?.title}</span>
           </div>
           <Progress value={feedback?.isCorrect ? 100 : 40} className="h-1.5 transition-all duration-1000" />
         </div>
@@ -198,15 +272,15 @@ CRITICAL INSTRUCTIONS:
              <h2 className="font-headline text-xl font-bold uppercase tracking-tight">Mission Objective</h2>
           </div>
           <div className="bg-secondary/30 rounded-xl p-4 border border-border/50">
-            <p className="text-sm leading-relaxed text-muted-foreground">{currentExercise.description}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{mission?.description}</p>
           </div>
         </section>
 
         {/* Editor */}
         <section className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">{currentExercise.language} Compiler Active</span>
-            <Button variant="ghost" size="sm" className="h-6 text-[10px] uppercase font-bold" onClick={() => setCode(currentExercise.starterCode)}>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">{language} Compiler Active</span>
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] uppercase font-bold" onClick={() => setCode(mission?.starterCode || "")}>
               Reset Code
             </Button>
           </div>
@@ -251,7 +325,7 @@ CRITICAL INSTRUCTIONS:
                     Critical Faults
                   </h5>
                   {feedback.errorsFound.map((err, i) => (
-                    <div key={i} className="bg-background/40 p-4 rounded-xl border border-destructive/20 text-xs backdrop-blur-sm">
+                     <div key={i} className="bg-background/40 p-4 rounded-xl border border-destructive/20 text-xs backdrop-blur-sm">
                       <p className="font-bold text-destructive mb-1 underline decoration-destructive/30 underline-offset-4">Fault Line {err.line || '??'}: {err.message}</p>
                       <p className="text-muted-foreground">{err.explanation}</p>
                     </div>

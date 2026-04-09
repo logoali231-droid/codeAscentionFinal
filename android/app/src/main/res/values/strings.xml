@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">projectcodeascention</string>
+    <string name="title_activity_main">projectcodeascention</string>
+    <string name="package_name">com.mateo.codeascention</string>
+    <string name="custom_url_scheme">com.mateo.codeascention</string>
+</resources>

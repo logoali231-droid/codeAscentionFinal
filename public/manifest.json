@@ -1,21 +1,29 @@
 {
-  "name": "Code Ascention",
-  "short_name": "Ascention",
-  "description": "Master coding with your limitless AI tutor.",
+  "name": "Code Ascention | AI Tutor",
+  "short_name": "CodeAI",
+  "description": "Master coding with your limitless offline AI tutor. Fully on-device. Zero cloud.",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
   "background_color": "#000000",
-  "theme_color": "#000000",
+  "theme_color": "#3b82f6",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "/icon.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
 }
