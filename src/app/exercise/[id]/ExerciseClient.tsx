@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getClientAiModel, safeParse } from "@/ai/client-ai";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { COURSES } from "@/app/lib/courses-data";
+import { COURSES, Course, Skill } from "@/app/lib/courses-data";
 import { useAuth, useFirestore, useUser } from "@/firebase";
 import { doc, collection, serverTimestamp } from "firebase/firestore";
 import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -59,12 +59,13 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
   }, [user, isUserLoading, router]);
 
   // Find current exercise in global data with correct types
-  const currentExercise = COURSES.flatMap((course: any) => course.skills).find((skill: any) => skill.id === id) || {
+  const currentExercise = COURSES.flatMap((course: Course) => course.skills).find((skill: Skill) => skill.id === id) || {
     id: "unknown",
     title: "Unknown Challenge",
     description: "Challenge details not found.",
     language: "javascript",
-    starterCode: "// Start coding here..."
+    starterCode: "// Start coding here...",
+    status: "locked" as const
   };
 
   useEffect(() => {
