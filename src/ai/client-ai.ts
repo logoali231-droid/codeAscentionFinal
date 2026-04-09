@@ -1,8 +1,7 @@
 import { CreateMLCEngine, MLCEngine, InitProgressCallback } from "@mlc-ai/web-llm";
 
-// Qwen2.5-Coder is specifically trained on code — far smarter than Phi-3 for a coding tutor.
-// Free, open source. ~4.5GB first-time download, cached permanently after.
-const SELECTED_MODEL = "Phi-3-mini-4k-instruct-q4f16_1-MLC";
+
+const SELECTED_MODEL = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
 let engineInstance: MLCEngine | null = null;
 let isInitializing = false;
 
@@ -62,23 +61,24 @@ export async function generateCustomMission(language: string, level: string, his
     const engine = await getLocalEngine(updateProgress);
 
     // We enforce JSON format by instructing Phi-3 heavily
-    const prompt = `You are LocalBrain, an expert programming tutor in a sci-fi cyber training simulator.
-Generate a coding mission for the language: ${language}.
-The difficulty level is: Phase ${level} (where 1 is absolute basics like variables, and 5 is data structures).
+    const prompt = `You are an expert programming tutor.
 
-User Training History / Weaknesses:
-${history || "No history. This is their first attempt."}
+The student has the following weaknesses:
+${history || "No history"}
 
-INSTRUCTIONS:
-1. Create a very short, engaging sci-fi themed objective (2-3 sentences max).
-2. If they have history, specifically test them on a concept they recently failed.
-3. Provide starter code in ${language} that has a clear place for them to write their solution.
+Create a coding exercise that specifically targets ONE weakness.
 
-CRITICAL: Output ONLY a valid JSON object matching this schema. NO markdown backticks, NO other text.
+Rules:
+- Be clear and short
+- Focus on one concept only
+- Do NOT give the solution
+- Make it slightly challenging
+
+Return ONLY JSON:
 {
-  "title": "Mission Title",
-  "description": "Short sci-fi objective.",
-  "starterCode": "// write code here"
+  "title": "",
+  "description": "",
+  "starterCode": ""
 }`;
 
     const reply = await engine.chat.completions.create({
@@ -105,11 +105,35 @@ export async function generateStructuredAIOutput<T>(
   try {
     const engine = await getLocalEngine(updateProgress);
 
-    const maxedPrompt = `${prompt}
-    
-CRITICAL INSTRUCTION: Output ONLY a valid JSON object. No markdown backticks, no conversational text.
-Expected JSON Schema keys: "isCorrect", "feedbackSummary", "errorsFound", "suggestions".`;
+    const maxedPrompt = `
+You are a strict but helpful programming tutor.
 
+Analyze the student's code.
+
+Give:
+1. What is wrong (specific)
+2. Why it's wrong
+3. A hint (DO NOT give full solution)
+4. Focus on their past mistakes if relevant
+
+Student history:
+${prompt}
+
+Return ONLY JSON:
+{
+  "isCorrect": boolean,
+  "feedbackSummary": string,
+  "errorsFound": string[],
+  "suggestions": [
+    {
+      "message": string,
+      "severity": "low" | "medium" | "high",
+      "type": "logic" | "syntax",
+      "explanation": string
+    }
+  ]
+}
+`;
     const reply = await engine.chat.completions.create({
       messages: [
         { role: "system", content: "You are a strict programming grader. You output pure JSON only." },
