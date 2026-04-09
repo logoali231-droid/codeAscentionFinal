@@ -61,36 +61,40 @@ export async function generateCustomMission(language: string, level: string, his
     const engine = await getLocalEngine(updateProgress);
 
     // We enforce JSON format by instructing Phi-3 heavily
-    const prompt = `You are an expert programming tutor.
+    const prompt = `
+You are a coding tutor.
 
-The student has the following weaknesses:
-${history || "No history"}
+Return ONLY valid JSON.
 
-Create a coding exercise that specifically targets ONE weakness.
+DO NOT write anything else.
 
-Rules:
-- Be clear and short
-- Focus on one concept only
-- Do NOT give the solution
-- Make it slightly challenging
-
-Return ONLY JSON:
+Example format:
 {
-  "title": "",
-  "description": "",
-  "starterCode": ""
-}`;
+  "title": "Example",
+  "description": "Example",
+  "starterCode": "// code"
+}
+
+Now generate:
+
+Language: ${language}
+Level: ${level}
+
+User weaknesses:
+${history || "none"}
+`;
 
     const reply = await engine.chat.completions.create({
       messages: [
         { role: "system", content: "You output pure JSON only." },
         { role: "user", content: prompt }
       ],
-      temperature: 0.7,
+      temperature: 0.3,
       max_tokens: 500,
     });
 
     const text = reply.choices[0].message.content || "";
+    console.log("RAW AI RESPONSE:", text);
     return safeParse<{ title: string, description: string, starterCode: string }>(text);
   } catch (error) {
     console.error("Local Mission Generation Error:", error);
