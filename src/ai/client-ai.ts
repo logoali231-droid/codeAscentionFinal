@@ -1,7 +1,7 @@
 import { CreateMLCEngine, MLCEngine, InitProgressCallback } from "@mlc-ai/web-llm";
 
 
-const SELECTED_MODEL = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
+const SELECTED_MODEL = "Phi-3-mini-4k-instruct-q4f16_1-MLC";
 let engineInstance: MLCEngine | null = null;
 let isInitializing = false;
 
@@ -115,11 +115,11 @@ ${history || "none"}
 
     const reply = await engine.chat.completions.create({
       messages: [
-        { role: "system", content: "You output pure JSON only." },
+        { role: "system", content: "You are a strict programming tutor. Output ONLY JSON." },
         { role: "user", content: prompt }
       ],
-      temperature: 0.3,
-      max_tokens: 500,
+      temperature: 0.2,
+      max_tokens: 250, // 🔥 reduzido
     });
 
     const text = reply.choices[0].message.content || "";
@@ -187,7 +187,7 @@ Return ONLY JSON:
         { role: "user", content: maxedPrompt }
       ],
       temperature: 0.1, // extremely low for grading
-      max_tokens: 800,
+      max_tokens: 250,
     });
 
     const text = reply.choices[0].message.content || "";
@@ -195,11 +195,37 @@ Return ONLY JSON:
     const parsed = safeParse<T>(text);
     if (!parsed) {
       console.warn("AI returned invalid JSON → using fallback. Raw text:", text);
-      return null;
+
+      return {
+        isCorrect: false,
+        feedbackSummary: "AI response invalid. Focus on your logic and try again.",
+        errorsFound: [],
+        suggestions: [
+          {
+            message: "Check your logic step by step",
+            severity: "medium",
+            type: "logic",
+            explanation: "The AI could not parse your code properly, but there may be a logic issue."
+          }
+        ]
+      } as T;
     }
     return parsed;
   } catch (error) {
     console.error("Local AI Generation Error:", error);
-    return null;
+
+    return {
+      isCorrect: false,
+      feedbackSummary: "AI failed to run. Using fallback feedback.",
+      errorsFound: [],
+      suggestions: [
+        {
+          message: "Break the problem into smaller parts",
+          severity: "low",
+          type: "logic",
+          explanation: "When unsure, simplify your approach."
+        }
+      ]
+    } as T;
   }
 }

@@ -1,3 +1,4 @@
+<link rel="manifest" href="/manifest.json" />
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "export",
