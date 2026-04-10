@@ -32,14 +32,35 @@ export async function getLocalEngine(initProgressCallback?: InitProgressCallback
   }
 
   isInitializing = true;
+
   try {
     console.log("Booting Local WebLLM Engine: ", SELECTED_MODEL);
-    const engine = await CreateMLCEngine(SELECTED_MODEL, { initProgressCallback });
+
+    engineInstance = null;
+
+    const timeout = new Promise<MLCEngine>((_, reject) =>
+      setTimeout(() => reject(new Error("Engine timeout")), 20000)
+    );
+
+    const engine = await Promise.race<MLCEngine>([
+      CreateMLCEngine(SELECTED_MODEL, { initProgressCallback }),
+      timeout
+    ]);
+
+    console.log("Engine booted successfully");
+
     engineInstance = engine;
+
+    if (!engineInstance) {
+      throw new Error("Engine failed to initialize");
+    }
+
     return engineInstance;
+
   } catch (error) {
     console.error("Failed to boot local AI engine:", error);
     throw error;
+
   } finally {
     isInitializing = false;
   }
