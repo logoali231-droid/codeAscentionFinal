@@ -34,33 +34,23 @@ export async function getLocalEngine(initProgressCallback?: InitProgressCallback
   isInitializing = true;
 
   try {
-    console.log("Booting Local WebLLM Engine: ", SELECTED_MODEL);
-
-    engineInstance = null;
-
-    const timeout = new Promise<MLCEngine>((_, reject) =>
-      setTimeout(() => reject(new Error("Engine timeout")), 20000)
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Engine timeout")), 15000)
     );
 
-    const engine = await Promise.race<MLCEngine>([
+    const engine = await Promise.race([
       CreateMLCEngine(SELECTED_MODEL, { initProgressCallback }),
       timeout
-    ]);
+    ]) as MLCEngine;
 
     console.log("Engine booted successfully");
 
     engineInstance = engine;
-
-    if (!engineInstance) {
-      throw new Error("Engine failed to initialize");
-    }
-
     return engineInstance;
 
   } catch (error) {
     console.error("Failed to boot local AI engine:", error);
     throw error;
-
   } finally {
     isInitializing = false;
   }
@@ -87,7 +77,14 @@ export function safeParse<T>(text: string): T | null {
 
 export async function generateCustomMission(language: string, level: string, history: string, updateProgress?: InitProgressCallback) {
   try {
-    const engine = await getLocalEngine(updateProgress);
+    let engine;
+
+    try {
+      engine = await getLocalEngine(updateProgress);
+    } catch {
+      console.warn("Engine failed → fallback");
+      return null;
+    }
 
     // We enforce JSON format by instructing Phi-3 heavily
     const prompt = `
