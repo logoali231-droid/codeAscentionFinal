@@ -43,12 +43,12 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
   const [profile, setProfile] = useState<LocalPilotProfile | null>(null);
   const [language, setLanguage] = useState("javascript");
   const [level, setLevel] = useState("1");
-  
-  const [mission, setMission] = useState<{title: string, description: string, starterCode: string} | null>(null);
+
+  const [mission, setMission] = useState<{ title: string, description: string, starterCode: string } | null>(null);
   const [isGenerating, setIsGenerating] = useState(true);
   const [downloadProgress, setDownloadProgress] = useState<string>("Initializing Core Engine...");
   const [noWebGpu, setNoWebGpu] = useState(false);
-  
+
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<PersonalizedCodeFeedback | null>(null);
@@ -73,7 +73,7 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
     async function loadMission() {
       if (!language || !level) return;
       setIsGenerating(true);
-      
+
       const attempts = localDb.getAttempts();
       const recentErrors = attempts
         .filter(a => !a.isCorrect && a.exerciseId.startsWith(language))
@@ -82,16 +82,16 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
         .join(" | ");
 
       const handleProgress = (report: any) => {
-          setDownloadProgress(report.text);
+        setDownloadProgress(report.text);
       };
 
       const newMission = await generateCustomMission(language, level, recentErrors, handleProgress);
-      
+
       if (newMission) {
         setMission(newMission);
         setCode(newMission.starterCode);
       } else {
-        toast({ title: "Failed to generate mission. Using fallback.", variant: "destructive" });
+        console.error("Failed to generate mission. Using fallback.");
         setMission({
           title: "System Fallback Route",
           description: `Declare a variable to prove the compiler is active.`,
@@ -108,7 +108,7 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
         if (err?.message?.startsWith("NO_WEBGPU")) {
           setNoWebGpu(true);
         } else {
-          toast({ title: "Engine Error", description: err.message, variant: "destructive" });
+          console.error("engine failed", err);
         }
         setIsGenerating(false);
       }
@@ -117,11 +117,11 @@ export default function ExerciseClient({ id }: ExerciseClientProps) {
     if (profile) {
       loadMissionSafe();
     }
-  }, [language, level, profile, toast]);
+  }, [language, level, profile]);
 
   const handleSubmit = async () => {
     if (!code.trim() || !mission) {
-      toast({ title: "Write some code first!", variant: "destructive" });
+      console.error("No code or mission");
       return;
     }
 
@@ -151,7 +151,7 @@ ${recentErrors}
 Pay special attention if they repeat these specific mistakes.` : "This is a clean slate. Help them build great habits."}`;
 
       const handleProgress = (report: any) => {
-          setDownloadProgress(report.text);
+        setDownloadProgress(report.text);
       };
 
       const parsed = await generateStructuredAIOutput<PersonalizedCodeFeedback>(prompt, handleProgress);
@@ -170,23 +170,19 @@ Pay special attention if they repeat these specific mistakes.` : "This is a clea
       });
 
       if (parsed.isCorrect) {
-         localDb.saveProgress({
-           lessonId: id,
-           status: 'Completed',
-           completedAt: new Date().toISOString(),
-           isMastered: true
-         });
-         toast({ title: "Mission accomplished!", description: "You've mastered this phase." });
+        localDb.saveProgress({
+          lessonId: id,
+          status: 'Completed',
+          completedAt: new Date().toISOString(),
+          isMastered: true
+        });
+        toast({ title: "Mission accomplished!", description: "You've mastered this phase." });
       } else {
-         toast({ title: "Analysis complete", description: "LocalBrain found areas for improvement.", variant: "default" });
+        toast({ title: "Analysis complete", description: "LocalBrain found areas for improvement." });
       }
 
     } catch (error: any) {
-      toast({ 
-        title: "LocalBrain Error", 
-        description: error.message || "An unexpected error occurred during analysis.", 
-        variant: "destructive" 
-      });
+      console.error("LocalBrain Error:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -196,14 +192,14 @@ Pay special attention if they repeat these specific mistakes.` : "This is a clea
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center glow-blue text-primary p-6 text-center">
         <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
-           <BrainCircuit className="w-16 h-16 mb-4 opacity-80" />
+          <BrainCircuit className="w-16 h-16 mb-4 opacity-80" />
         </motion.div>
         <h2 className="text-xl font-black uppercase tracking-widest italic animate-pulse">Offline Engine Syncing</h2>
         <p className="text-sm text-muted-foreground mt-4 max-w-sm font-code break-words bg-secondary/30 p-4 rounded-xl border border-border">
           {downloadProgress}
         </p>
         <p className="text-[10px] uppercase font-bold text-primary/50 mt-8 tracking-widest">
-           First-time boot requires ~4.5GB asset download. This will only happen once.
+          First-time boot requires ~4.5GB asset download. This will only happen once.
         </p>
       </div>
     );
@@ -218,7 +214,7 @@ Pay special attention if they repeat these specific mistakes.` : "This is a clea
           Open in Chrome
         </h2>
         <p className="text-muted-foreground text-sm max-w-sm leading-relaxed mb-8">
-          The offline AI requires <strong className="text-white">WebGPU</strong>, which only works in <strong className="text-white">Chrome</strong> — not inside this APK's browser. 
+          The offline AI requires <strong className="text-white">WebGPU</strong>, which only works in <strong className="text-white">Chrome</strong> — not inside this APK's browser.
         </p>
         <div className="bg-secondary/20 border border-border rounded-3xl p-6 space-y-4 max-w-sm w-full text-left">
           <p className="text-[10px] uppercase font-bold tracking-widest text-primary">Install Steps</p>
@@ -268,8 +264,8 @@ Pay special attention if they repeat these specific mistakes.` : "This is a clea
         {/* Objective */}
         <section className="space-y-2">
           <div className="flex items-center gap-2">
-             <BrainCircuit className="w-5 h-5 text-primary" />
-             <h2 className="font-headline text-xl font-bold uppercase tracking-tight">Mission Objective</h2>
+            <BrainCircuit className="w-5 h-5 text-primary" />
+            <h2 className="font-headline text-xl font-bold uppercase tracking-tight">Mission Objective</h2>
           </div>
           <div className="bg-secondary/30 rounded-xl p-4 border border-border/50">
             <p className="text-sm leading-relaxed text-muted-foreground">{mission?.description}</p>
@@ -325,7 +321,7 @@ Pay special attention if they repeat these specific mistakes.` : "This is a clea
                     Critical Faults
                   </h5>
                   {feedback.errorsFound.map((err, i) => (
-                     <div key={i} className="bg-background/40 p-4 rounded-xl border border-destructive/20 text-xs backdrop-blur-sm">
+                    <div key={i} className="bg-background/40 p-4 rounded-xl border border-destructive/20 text-xs backdrop-blur-sm">
                       <p className="font-bold text-destructive mb-1 underline decoration-destructive/30 underline-offset-4">Fault Line {err.line || '??'}: {err.message}</p>
                       <p className="text-muted-foreground">{err.explanation}</p>
                     </div>
