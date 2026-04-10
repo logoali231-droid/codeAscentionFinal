@@ -46,13 +46,21 @@ export async function getLocalEngine(initProgressCallback?: InitProgressCallback
 }
 
 export function safeParse<T>(text: string): T | null {
-  const match = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/); // Matches JSON objects or arrays
-  if (!match) return null;
-
   try {
-    return JSON.parse(match[0]);
+    const cleaned = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    return JSON.parse(cleaned);
   } catch {
-    return null;
+    try {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) return null;
+      return JSON.parse(match[0]);
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -95,7 +103,21 @@ ${history || "none"}
 
     const text = reply.choices[0].message.content || "";
     console.log("RAW AI RESPONSE:", text);
-    return safeParse<{ title: string, description: string, starterCode: string }>(text);
+    const parsed = safeParse<{ title: string, description: string, starterCode: string }>(text);
+
+    console.log("PARSED:", parsed);
+
+    if (
+      !parsed ||
+      typeof parsed.title !== "string" ||
+      typeof parsed.description !== "string" ||
+      typeof parsed.starterCode !== "string"
+    ) {
+      console.warn("Invalid structure → fallback");
+      return null;
+    }
+
+    return parsed;
   } catch (error) {
     console.error("Local Mission Generation Error:", error);
     return null;
