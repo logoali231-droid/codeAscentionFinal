@@ -3,6 +3,10 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from "@/firebase/client-provider";
+import ServiceWorkerRegister from "@/components/servicewconfigregister";
+import SWRegister from "./sw-register";
+
+<SWRegister />
 
 export const metadata: Metadata = {
   title: 'Code Ascent | Master Programming',
@@ -22,14 +26,13 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className="font-body antialiased bg-background">
-        <FirebaseClientProvider>
-          <div className="android-container shadow-2xl">
-            {children}
-          </div>
-          <Toaster />
-        </FirebaseClientProvider>
-      </body>
+      <FirebaseClientProvider>
+  <ServiceWorkerRegister />
+  <div className="android-container shadow-2xl">
+    {children}
+  </div>
+  <Toaster />
+</FirebaseClientProvider>
     </html>
   );
 }
