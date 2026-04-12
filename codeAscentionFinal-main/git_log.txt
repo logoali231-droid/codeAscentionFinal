@@ -1,0 +1,232 @@
+﻿commit cb96ecc7bc78a2347526069a12e70a07b88e35df
+Author: Mateo B Somavilla <logoali231@gmail.com>
+Date:   Fri Mar 27 19:28:18 2026 -0300
+
+    Revivendo o Code Ascension
+
+diff --git a/src/ai/flows/customized-practice-challenges.ts b/src/ai/flows/customized-practice-challenges.ts
+index 882762e..fc7f30e 100644
+--- a/src/ai/flows/customized-practice-challenges.ts
++++ b/src/ai/flows/customized-practice-challenges.ts
+@@ -1,79 +1,61 @@
+-'use server';
+-/**
+- * @fileOverview A Genkit flow for generating customized coding challenges based on user weaknesses.
+- *
+- * - generateCustomizedChallenge - A function that generates a personalized coding challenge.
+- * - CustomizedChallengeInput - The input type for the generateCustomizedChallenge function.
+- * - CustomizedChallengeOutput - The return type for the generateCustomizedChallenge function.
+- */
++import { getAI } from '@/firebase/ai';
++import { getGenerativeModel, Schema } from 'firebase/vertexai';
+ 
+-import {ai} from '@/ai/genkit';
+-import {z} from 'genkit';
++export interface CustomizedChallengeInput {
++  identifiedWeaknesses: string;
++  programmingLanguage?: string;
++}
+ 
+-const CustomizedChallengeInputSchema = z.object({
+-  identifiedWeaknesses: z
+-    .string()
+-    .describe(
+-      'A comma-separated list or description of the user\'s programming weaknesses or areas they need to practice (e.g., "recursion, dynamic programming, error handling").'
+-    ),
+-  programmingLanguage: z
+-    .string()
+-    .optional()
+-    .describe('The preferred programming language for the challenge (e.g., "Python", "JavaScript", "Java").'),
+-});
+-export type CustomizedChallengeInput = z.infer<typeof CustomizedChallengeInputSchema>;
++export interface CustomizedChallengeOutput {
++  challengeTitle: string;
++  challengeDescription: string;
++  problemStatement: string;
++  inputExamples: string[];
++  outputExamples: string[];
++  hints?: string[];
++}
+ 
+-const CustomizedChallengeOutputSchema = z.object({
+-  challengeTitle: z.string().describe('The title of the coding challenge.'),
+-  challengeDescription: z
+-    .string()
+-    .describe('A brief description explaining the purpose and scope of the challenge.'),
+-  problemStatement: z.string().describe('The detailed problem statement for the coding challenge.'),
+-  inputExamples: z
+-    .array(z.string())
+-    .describe('An array of example inputs for the challenge.'),
+-  outputExamples: z
+-    .array(z.string())
+-    .describe('An array of corresponding expected outputs for the challenge\'s input examples.'),
+-  hints: z
+-    .array(z.string())
+-    .optional()
+-    .describe('An optional array of hints to help the user solve the challenge.'),
+-});
+-export type CustomizedChallengeOutput = z.infer<typeof CustomizedChallengeOutputSchema>;
++const challengeResponseSchema: Schema = {
++  type: "object" as any,
++  properties: {
++    challengeTitle: { type: "string" as any, description: 'The title of the coding challenge.' },
++    challengeDescription: { type: "string" as any, description: 'A brief description explaining the purpose and scope of the challenge.' },
++    problemStatement: { type: "string" as any, description: 'The detailed problem statement for the coding challenge.' },
++    inputExamples: { type: "array" as any, items: { type: "string" as any }, description: 'An array of example inputs for the challenge.' },
++    outputExamples: { type: "array" as any, items: { type: "string" as any }, description: 'An array of corresponding expected outputs for the challenge.' },
++    hints: { type: "array" as any, items: { type: "string" as any }, description: 'An optional array of hints to help the user solve the challenge.' }
++  },
++  required: ['challengeTitle', 'challengeDescription', 'problemStatement', 'inputExamples', 'outputExamples']
++};
+ 
+ export async function generateCustomizedChallenge(
+   input: CustomizedChallengeInput
+ ): Promise<CustomizedChallengeOutput> {
+-  return customizedChallengeFlow(input);
+-}
+-
+-const challengePrompt = ai.definePrompt({
+-  name: 'customizedChallengePrompt',
+-  input: {schema: CustomizedChallengeInputSchema},
+-  output: {schema: CustomizedChallengeOutputSchema},
+-  prompt: `You are an experienced programming instructor. Your goal is to create a customized coding challenge for a user.
+-
+-Generate a coding challenge that specifically targets the following weaknesses identified in the user's performance: {{{identifiedWeaknesses}}}.
+-
+-{{#if programmingLanguage}}
+-The challenge should primarily be solvable using the {{programmingLanguage}} programming language.
+-{{/if}}
+-
++  try {
++    const vertexAI = getAI();
++    const model = getGenerativeModel(vertexAI, { 
++      model: 'gemini-1.5-flash',
++      generationConfig: {
++        temperature: 0.7,
++        responseMimeType: 'application/json',
++        responseSchema: challengeResponseSchema
++      }
++    });
++
++    let promptText = `You are an experienced programming instructor. Your goal is to create a customized coding challenge for a user.
++
++Generate a coding challenge that specifically targets the following weaknesses identified in the user's performance: ${input.identifiedWeaknesses}.
++
++${input.programmingLanguage ? `The challenge should primarily be solvable using the ${input.programmingLanguage} programming language.\n` : ''}
+ Ensure the challenge has a clear problem statement, provides concrete input examples, and their corresponding expected outputs. Optionally, provide some helpful hints.
+ 
+-Structure your response strictly in the requested JSON format, ensuring all fields are populated correctly.
+-`,
+-});
++Structure your response strictly in the requested JSON format, ensuring all fields are populated correctly.`;
+ 
+-const customizedChallengeFlow = ai.defineFlow(
+-  {
+-    name: 'customizedChallengeFlow',
+-    inputSchema: CustomizedChallengeInputSchema,
+-    outputSchema: CustomizedChallengeOutputSchema,
+-  },
+-  async input => {
+-    const {output} = await challengePrompt(input);
+-    return output!;
++    const result = await model.generateContent(promptText);
++    const text = result.response.text();
++    return JSON.parse(text) as CustomizedChallengeOutput;
++  } catch (error) {
++    console.error("AI Flow Error:", error);
++    throw error;
+   }
+-);
++}
+
+commit 32aa95a6817a84733e609ef54a77239b329d1c33
+Author: Mateo <logoali231@gmail.com>
+Date:   Thu Mar 19 11:47:38 2026 +0000
+
+    Initial prototype
+
+diff --git a/src/ai/flows/customized-practice-challenges.ts b/src/ai/flows/customized-practice-challenges.ts
+new file mode 100644
+index 0000000..882762e
+--- /dev/null
++++ b/src/ai/flows/customized-practice-challenges.ts
+@@ -0,0 +1,79 @@
++'use server';
++/**
++ * @fileOverview A Genkit flow for generating customized coding challenges based on user weaknesses.
++ *
++ * - generateCustomizedChallenge - A function that generates a personalized coding challenge.
++ * - CustomizedChallengeInput - The input type for the generateCustomizedChallenge function.
++ * - CustomizedChallengeOutput - The return type for the generateCustomizedChallenge function.
++ */
++
++import {ai} from '@/ai/genkit';
++import {z} from 'genkit';
++
++const CustomizedChallengeInputSchema = z.object({
++  identifiedWeaknesses: z
++    .string()
++    .describe(
++      'A comma-separated list or description of the user\'s programming weaknesses or areas they need to practice (e.g., "recursion, dynamic programming, error handling").'
++    ),
++  programmingLanguage: z
++    .string()
++    .optional()
++    .describe('The preferred programming language for the challenge (e.g., "Python", "JavaScript", "Java").'),
++});
++export type CustomizedChallengeInput = z.infer<typeof CustomizedChallengeInputSchema>;
++
++const CustomizedChallengeOutputSchema = z.object({
++  challengeTitle: z.string().describe('The title of the coding challenge.'),
++  challengeDescription: z
++    .string()
++    .describe('A brief description explaining the purpose and scope of the challenge.'),
++  problemStatement: z.string().describe('The detailed problem statement for the coding challenge.'),
++  inputExamples: z
++    .array(z.string())
++    .describe('An array of example inputs for the challenge.'),
++  outputExamples: z
++    .array(z.string())
++    .describe('An array of corresponding expected outputs for the challenge\'s input examples.'),
++  hints: z
++    .array(z.string())
++    .optional()
++    .describe('An optional array of hints to help the user solve the challenge.'),
++});
++export type CustomizedChallengeOutput = z.infer<typeof CustomizedChallengeOutputSchema>;
++
++export async function generateCustomizedChallenge(
++  input: CustomizedChallengeInput
++): Promise<CustomizedChallengeOutput> {
++  return customizedChallengeFlow(input);
++}
++
++const challengePrompt = ai.definePrompt({
++  name: 'customizedChallengePrompt',
++  input: {schema: CustomizedChallengeInputSchema},
++  output: {schema: CustomizedChallengeOutputSchema},
++  prompt: `You are an experienced programming instructor. Your goal is to create a customized coding challenge for a user.
++
++Generate a coding challenge that specifically targets the following weaknesses identified in the user's performance: {{{identifiedWeaknesses}}}.
++
++{{#if programmingLanguage}}
++The challenge should primarily be solvable using the {{programmingLanguage}} programming language.
++{{/if}}
++
++Ensure the challenge has a clear problem statement, provides concrete input examples, and their corresponding expected outputs. Optionally, provide some helpful hints.
++
++Structure your response strictly in the requested JSON format, ensuring all fields are populated correctly.
++`,
++});
++
++const customizedChallengeFlow = ai.defineFlow(
++  {
++    name: 'customizedChallengeFlow',
++    inputSchema: CustomizedChallengeInputSchema,
++    outputSchema: CustomizedChallengeOutputSchema,
++  },
++  async input => {
++    const {output} = await challengePrompt(input);
++    return output!;
++  }
++);

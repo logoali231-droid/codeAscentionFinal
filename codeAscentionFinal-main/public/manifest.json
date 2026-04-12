@@ -1,0 +1,16 @@
+{
+  "name": "Code Ascent",
+  "short_name": "Code Ascent",
+  "description": "AI-driven programming education platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111619",
+  "theme_color": "#111619",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

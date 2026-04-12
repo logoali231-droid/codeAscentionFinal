@@ -1,0 +1,55 @@
+﻿node : file:///C:/Users/mat
+eo/Downloads/projectcodeasc
+ention/[eval1]:1
+At line:1 char:1
++ node --import tsx -e 
+"import {generateCustomized
+Challenge} from './sr ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: (fil  
+  e:///C:/User...ntion/[   
+ eval1]:1:String) [], R    
+emoteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+import {generateCustomizedC
+hallenge} from './src/ai/fl
+ows/customized-practice-cha
+llenges.ts'; generateCustom
+izedChallenge({identifiedWe
+aknesses: 'recursion'}).the
+n(console.log).catch(e => 
+{ console.error('BIG 
+ERROR:', e); }) 
+        
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: The requested 
+module './src/ai/flows/cust
+omized-practice-challenges.
+ts' does not provide an 
+export named 'generateCusto
+mizedChallenge'
+    at #_instantiate (node:
+internal/modules/esm/module
+_job:254:21)
+    at async ModuleJob.run 
+(node:internal/modules/esm/
+module_job:369:5)
+    at async onImport.trace
+Promise.__proto__ (node:int
+ernal/modules/esm/loader:25
+4:26)
+    at async ModuleLoader.e
+xecuteModuleJob (node:inter
+nal/modules/esm/loader:251:
+20)
+    at async asyncRunEntryP
+ointWithESMLoader (node:int
+ernal/modules/run_main:101:
+5)
+
+Node.js v24.11.1
