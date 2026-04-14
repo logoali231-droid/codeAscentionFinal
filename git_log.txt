@@ -17,8 +17,7 @@ index 882762e..fc7f30e 100644
 - * - CustomizedChallengeInput - The input type for the generateCustomizedChallenge function.
 - * - CustomizedChallengeOutput - The return type for the generateCustomizedChallenge function.
 - */
-+import { getAI } from '@/firebase/ai';
-+import { getGenerativeModel, Schema } from 'firebase/vertexai';
+
  
 -import {ai} from '@/ai/genkit';
 -import {z} from 'genkit';

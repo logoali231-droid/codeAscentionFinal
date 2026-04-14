@@ -7,11 +7,9 @@ import { BottomNav } from "@/components/BottomNav";
 import { Rocket, Zap, Crown, ChevronDown, BrainCircuit, LogOut, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { COURSES } from "@/app/lib/courses-data";
-import { useUser, useAuth } from "@/firebase/provider";
-import { signOutUser } from "@/firebase/auth";
+
+
 import { useRouter } from "next/navigation";
-import { getPastUserErrorsSummary, getUserPacingMetrics } from "@/lib/user-progress";
-import { useFirestore } from "@/firebase";
 import { generateStructuredAIOutput } from "@/ai/client-ai";
 import {
   DropdownMenu,
@@ -22,10 +20,10 @@ import {
 import { Button } from "@/components/ui/button";
 export default function Home() {
   const [currentCourse, setCurrentCourse] = useState(COURSES[0]);
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
+
   const router = useRouter();
-  const db = useFirestore();
+  const user = { uid: "local-user-1", email: "local@user.dev" };
+  const isUserLoading = false;
 
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [hasRecentStruggles, setHasRecentStruggles] = useState(false);
@@ -33,37 +31,20 @@ export default function Home() {
 
   useEffect(() => {
     async function loadAiInsights() {
-      if (!user || !db) return;
       setIsInsightLoading(true);
       try {
-        const errors = await getPastUserErrorsSummary(db, user.uid);
-        if (errors) {
-          setHasRecentStruggles(true);
-          const pacing = await getUserPacingMetrics(db, user.uid);
-          
-          const prompt = `You are an encouraging AI coding coach. Based on these recent user errors and their learning pace, provide a brief (1-2 sentences), highly motivating insight on what they should focus on next.
-          
-ERRORS: ${errors}
-PACING: ${pacing}
-
-Return ONLY a valid JSON object:
-{
-  "insight": "string"
-}`;
-          
-          try {
-            const res = await generateStructuredAIOutput<{insight: string}>(prompt, undefined, true);
-            setAiInsight(res.insight);
-          } catch (aiErr) {
-            // Local fallback — no API needed
-            const fallbacks = [
-              "You're making great progress! Focus on practicing the fundamentals — loops and functions are your foundation.",
-              "Keep pushing! Every error is a lesson. Review your recent mistakes and try the exercises again.",
-              "You're building real skills! Try tackling a challenge in the Practice Lab to sharpen your edge.",
-              "Consistency is key. Even 15 minutes of practice daily makes a huge difference over time!",
-            ];
-            setAiInsight(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
-          }
+        const prompt = `You are an encouraging AI coding coach. Provide a brief (1-2 sentences), highly motivating insight on what a learner should focus on next. Keep it positive, practical, and supportive.`;
+        try {
+          const res = await generateStructuredAIOutput<{insight: string}>(prompt, true);
+          setAiInsight(res.insight);
+        } catch (aiErr) {
+          const fallbacks = [
+            "You're making great progress! Focus on practicing the fundamentals — loops and functions are your foundation.",
+            "Keep pushing! Every error is a lesson. Review your recent mistakes and try the exercises again.",
+            "You're building real skills! Try tackling a challenge in the Practice Lab to sharpen your edge.",
+            "Consistency is key. Even 15 minutes of practice daily makes a huge difference over time!",
+          ];
+          setAiInsight(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
         }
       } catch (err: any) {
         console.error("AI Insight error:", err);
@@ -72,17 +53,7 @@ Return ONLY a valid JSON object:
       }
     }
     loadAiInsights();
-  }, [user, db]);
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.replace("/login");
-    }
-  }, [user, isUserLoading, router]);
-
-  if (isUserLoading || !user) {
-    return <div className="min-h-screen bg-background flex flex-col items-center justify-center glow-blue text-primary animate-pulse"><Rocket className="w-12 h-12" /></div>;
-  }
+  }, []);
 
   return (
     <div className="pb-24 min-h-screen">
@@ -129,7 +100,7 @@ Return ONLY a valid JSON object:
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => auth && signOutUser(auth)}
+            onClick={() => router.push("/login")}
             className="hover:bg-red-500/10 hover:text-red-500 transition-colors"
           >
             <LogOut className="w-5 h-5" />

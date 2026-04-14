@@ -4,7 +4,7 @@ import { useState } from "react";
 import { generateFeedback } from "@/ai/generateFeedback";
 import { canRunAI } from "@/hooks/useAI";
 
-export default function ExerciseClient() {
+export default function ExerciseClient({ id }: { id: string }) {
   const [code, setCode] = useState("");
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);

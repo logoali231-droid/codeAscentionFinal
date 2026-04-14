@@ -74,12 +74,7 @@ Return ONLY valid JSON:
   "hints": ["string"]
 }`;
 
-      const data = await generateStructuredAIOutput<CustomizedChallenge>(
-        prompt, 
-        undefined, 
-        true, 
-        (attempt) => setRetryStatus(`Cloud AI Retry ${attempt}/6`)
-      );
+      const data = await generateStructuredAIOutput<CustomizedChallenge>(prompt, true);
       setChallenge(data);
       setSource("cloud");
     } catch (error: any) {

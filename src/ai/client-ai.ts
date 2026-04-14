@@ -1,116 +1,64 @@
-import { localAi, getHeuristicHint } from "./local-client";
-import { saveToMemory } from "./memory";
-import { getAIEngine } from "./webllm";
+"use client";
 
+import { getHeuristicHint } from "./local-client";
+import { generateExercise } from "./webllm";
+import type { Exercise } from "./types";
+import { updateDifficulty, getPerformance } from "./difficulty";
 
-/**
- * Hash para cache
- */
-export async function generateExercise(topic: string, difficulty: string) {
-  const engine = await getAIEngine();
-
-  const prompt = `
-Create a programming exercise.
-
-Topic: ${topic}
-Difficulty: ${difficulty}
-
-Respond ONLY in JSON:
-{
-  "title": "...",
-  "description": "..."
-}
-`;
-
-  const response = await engine.chat.completions.create({
-    messages: [{ role: "user", content: prompt }],
-  });
-  const text = response.choices[0].message.content ?? "";
-
-if (!text.trim()) {
-  return {
-    title: topic,
-    description: "AI failed to generate content. Try again.",
-  };
+function getAdaptiveDifficulty(count: number): string {
+  if (count > 15) return "very easy";
+  if (count > 8) return "easy";
+  return "beginner";
 }
 
-try {
-  return JSON.parse(text);
-} catch {
-  return {
-    title: topic,
-    description: text,
-  };
-}
+function buildContext(memory: any[]): string {
+  return memory
+    .slice(0, 5)
+    .map((m) => `${m.topic} (${m.type}) x${m.count}`)
+    .join(", ");
 }
 
-function hashPrompt(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return "ai_cache_" + Math.abs(hash).toString(36);
-}
-
-/**
- * Limpa cache
- */
-export function clearAiCache() {
-  if (typeof window === 'undefined') return;
-
-  Object.keys(localStorage).forEach(key => {
-    if (key.startsWith("ai_cache_")) {
-      localStorage.removeItem(key);
+// 🔥 EXERCÍCIO INTELIGENTE BASEADO NO USUÁRIO
+export async function safeGenerateExercise(): Promise<Exercise> {
+  try {
+    if (typeof window === "undefined") {
+      throw new Error("No window");
     }
-  });
-}
 
-/**
- * AI estruturada (JSON)
- */
-export async function generateStructuredAIOutput<T>(
-  prompt: string
-): Promise<T> {
-  try {
-    const response = await localAi.generate(prompt);
-    return JSON.parse(response) as T;
-  } catch (err) {
-    console.warn("Local AI failed:", err);
-    throw err;
-  }
-}
+    const memoryRaw = localStorage.getItem("ai_memory") || "[]";
+    const memory = JSON.parse(memoryRaw);
+    
 
-/**
- * 🔥 GERA EXERCÍCIO BASEADO NA MEMÓRIA DO USUÁRIO
- */
-export async function generatePersonalizedExercise() {
-  try {
-    const memoryRaw = localStorage.getItem("ai_memory");
-    const memory = memoryRaw ? JSON.parse(memoryRaw) : [];
-
-    if (memory.length === 0) {
+    if (!Array.isArray(memory) || memory.length === 0) {
       return {
         title: "Intro Exercise",
-        description: "Create a simple function that returns a number.",
+        description: "Create a function that returns a number.",
       };
     }
 
-    // pega o erro mais frequente
-    const topError = memory.sort((a: any, b: any) => b.count - a.count)[0];
+    const topError = memory.sort(
+      (a: any, b: any) => b.count - a.count
+    )[0];
 
-    if (!topError?.topic) {
-  return {
-    title: "Practice Basics",
-    description: "Write a simple function that returns a value.",
-  };
-}
+    const difficulty = getAdaptiveDifficulty(topError.count);
+    const context = buildContext(memory);
 
-  return await generateExercise(topError.topic, "beginner");
+   const performance = getPerformance();
+   
+
+const ai = await generateExercise(
+  topError.topic,
+  performance.level
+);
+
+    if (!ai || !ai.description) {
+      throw new Error("Invalid AI response");
+    }
+
+    return ai;
 
   } catch (err) {
-    console.warn("Exercise generation failed:", err);
+    console.warn("AI failed, using fallback:", err);
 
     return {
       title: "Fallback Exercise",
@@ -119,38 +67,44 @@ export async function generatePersonalizedExercise() {
   }
 }
 
-/**
- * Hint inteligente com fallback
- */
-export async function generateLocalHint(
-  exerciseTitle: string,
-  exerciseDescription: string,
-  code: string
-): Promise<string> {
+// 🔥 JSON AI OUTPUT (ROBUSTO)
+export async function generateStructuredAIOutput<T>(
+  prompt: string,
+  retry: boolean = false
+): Promise<T> {
+  const maxRetries = retry ? 5 : 1;
+  let lastError: any;
 
-  // Tier 1: AI
-  if (localAi.isReady()) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const prompt = `User is working on: ${exerciseTitle}. ${exerciseDescription}
-Code:
-${code}
-Give a short hint:`;
-
-      const response = await localAi.generate(prompt);
-
-      if (response && response.trim().length > 10) {
-        return response.trim();
-      }
+      const ai = await generateExercise(prompt, "beginner");
+      return ai as T;
     } catch (err) {
-      console.warn("AI failed, fallback heuristic:", err);
+      lastError = err;
     }
   }
 
-  // Tier 2: heurística
-  try {
-    return getHeuristicHint(exerciseTitle, exerciseDescription, code);
-  } catch (err) {}
+  throw lastError || new Error("AI failed");
+}
 
-  // Tier 3: fallback
+// 🔥 HINT EM 3 CAMADAS
+export async function generateLocalHint(
+  title: string,
+  description: string,
+  code: string
+): Promise<string> {
+  try {
+    const ai = await generateExercise(title, "beginner");
+    if (ai?.description) return ai.description;
+  } catch {}
+
+  try {
+    return getHeuristicHint(title, description, code);
+  } catch {}
+
   return "Break the problem into smaller steps and try again.";
+}
+
+export function clearAiCache() {
+  console.log("AI cache cleared");
 }

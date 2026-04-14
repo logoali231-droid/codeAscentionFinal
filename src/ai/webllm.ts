@@ -2,28 +2,37 @@
 
 import * as webllm from "@mlc-ai/web-llm";
 
+interface Exercise {
+  title: string;
+  description: string;
+}
+
 let engine: webllm.MLCEngine | null = null;
 
-"use client";
+export async function getAIEngine() {
+  if (engine) return engine;
 
-
-
-"use client";
-
-export async function generateExercise(topic: string, difficulty: string) {
-  let engine;
-
-  try {
-    engine = await getAIEngine();
-  } catch (err) {
-    console.warn("AI not supported, using fallback:", err);
-
-    // 🔥 FALLBACK SEM IA
-    return {
-      title: `Practice ${topic}`,
-      description: `Create a simple ${difficulty} exercise about ${topic}.`,
-    };
+  if (!("gpu" in navigator)) {
+    throw new Error("WebGPU not supported");
   }
+
+  engine = await webllm.CreateMLCEngine(
+    "Phi-3-mini-4k-instruct-q4f16_1",
+    {
+      initProgressCallback: (progress: any) => {
+        console.log("Loading AI:", progress);
+      },
+    }
+  );
+
+  return engine;
+}
+
+export async function generateExercise(
+  topic: string,
+  difficulty: string
+): Promise<Exercise> {
+  const engine = await getAIEngine();
 
   const prompt = `
 Create a programming exercise.
@@ -44,13 +53,6 @@ Respond ONLY in JSON:
 
   const text = response.choices[0].message.content ?? "";
 
-  if (!text.trim()) {
-    return {
-      title: topic,
-      description: "AI failed. Try again.",
-    };
-  }
-
   try {
     return JSON.parse(text);
   } catch {
@@ -59,52 +61,4 @@ Respond ONLY in JSON:
       description: text,
     };
   }
-}
-
-import { getUserMemory } from "./memory";
-
-export async function generatePersonalizedExercise() {
-  try {
-    const memoryRaw = localStorage.getItem("ai_memory");
-    const memory = memoryRaw ? JSON.parse(memoryRaw) : [];
-
-    if (memory.length === 0) {
-      return {
-        title: "Intro Exercise",
-        description: "Create a simple function that returns a number.",
-      };
-    }
-
-    const topError = memory.sort(
-      (a: any, b: any) => b.count - a.count
-    )[0];
-
-    return await generateExercise(topError.topic, "beginner");
-
-  } catch (err) {
-    console.warn("Exercise generation failed:", err);
-
-    return {
-      title: "Fallback Exercise",
-      description: "Write a loop that prints numbers from 1 to 10.",
-    };
-  }
-}
-export async function getAIEngine() {
-  if (engine) return engine;
-
-  if (!("gpu" in navigator)) {
-    throw new Error("WebGPU not supported");
-  }
-
-  engine = await webllm.CreateMLCEngine(
-    "Phi-3-mini-4k-instruct-q4f16_1", // 👈 STRING, não objeto
-    {
-      initProgressCallback: (progress: any) => {
-        console.log("Loading AI:", progress);
-      },
-    }
-  );
-
-  return engine;
 }

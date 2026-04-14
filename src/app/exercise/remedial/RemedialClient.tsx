@@ -10,9 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { generateStructuredAIOutput } from "@/ai/client-ai";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUser, useFirestore } from "@/firebase";
-import { collection, serverTimestamp, addDoc } from "firebase/firestore";
-import { getPastUserErrorsSummary, getUserPacingMetrics } from "@/lib/user-progress";
+import { updateDifficulty } from "@/ai/difficulty";
+import type { AdvancedFeedback } from "@/ai/types";
 
 interface RemedialExercise {
   title: string;
@@ -31,8 +30,8 @@ interface RemedialFeedback {
 export default function RemedialClient() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
-  const db = useFirestore();
+  const user = { uid: "local-user-1" };
+  const isUserLoading = false;
 
   const [exercise, setExercise] = useState<RemedialExercise | null>(null);
   const [code, setCode] = useState("");
@@ -45,23 +44,10 @@ export default function RemedialClient() {
 
   useEffect(() => {
     async function generateExercise() {
-      if (!user || !db) return;
       setIsGenerating(true);
       setRetryStatus(null);
       try {
-        const errors = await getPastUserErrorsSummary(db, user.uid);
-        const pacing = await getUserPacingMetrics(db, user.uid);
-
-        const prompt = `You are a world-class programming tutor. You are creating a "Remedial Mission" for a student who has been struggling with specific concepts.
-        
-USER ERROR HISTORY:
-${errors}
-
-USER PACING:
-${pacing}
-
-Based on these errors, generate a NEW, targeted coding exercise that specifically addresses their misunderstandings. 
-It should be simple enough to build confidence but technical enough to fix the error pattern.
+        const prompt = `You are a world-class programming tutor. Create a "Remedial Mission" that gives a learner a confidence-building coding exercise focused on core fundamentals. Keep the mission clear, supportive, and suitable for someone who may need extra practice.
 
 Return ONLY a valid JSON object:
 {
@@ -71,12 +57,7 @@ Return ONLY a valid JSON object:
   "language": "string (e.g. JavaScript, Python)"
 }`;
 
-        const generated = await generateStructuredAIOutput<RemedialExercise>(
-          prompt, 
-          undefined, 
-          true, 
-          (attempt) => setRetryStatus(`Synthesizing... Retry ${attempt}/6`)
-        );
+        const generated = await generateStructuredAIOutput<RemedialExercise>(prompt);
         setExercise(generated);
         setCode(generated.starterCode);
       } catch (error: any) {
@@ -88,64 +69,83 @@ Return ONLY a valid JSON object:
       }
     }
 
-    if (!isUserLoading && user) {
+    if (!isUserLoading) {
       generateExercise();
-    } else if (!isUserLoading && !user) {
-      router.replace("/login");
     }
-  }, [user, isUserLoading, db, router]);
+  }, [isUserLoading]);
 
-  const handleSubmit = async () => {
-    if (!code.trim() || !exercise) return;
-    setIsSubmitting(true);
-    setFeedback(null);
-    setEvalRetryStatus(null);
+ const handleSubmit = async () => {
+  if (!code.trim() || !exercise) return;
 
-    try {
-      const prompt = `Evaluate this student's response to the Remedial Mission.
-      
+  setIsSubmitting(true);
+  setFeedback(null);
+  setEvalRetryStatus(null);
+
+  try {
+    const prompt = `You are an elite programming mentor.
+
+Evaluate the student's solution with deeper analysis.
+
 MISSION: ${exercise.title}
 DESCRIPTION: ${exercise.description}
-SUBMITTED CODE:
+
+CODE:
 \`\`\`${exercise.language}
 ${code}
 \`\`\`
 
-Return ONLY a valid JSON object:
+Return ONLY valid JSON:
+
 {
   "isCorrect": boolean,
-  "feedbackSummary": "string",
-  "errorsFound": [{ "line": number, "message": "string", "explanation": "string" }],
-  "suggestions": [{ "type": "logic" | "style", "message": "string", "explanation": "string" }]
+  "score": number,
+  "level": "poor" | "ok" | "good" | "excellent",
+  "feedbackSummary": "short explanation",
+
+  "analysis": {
+    "logic": number,
+    "readability": number,
+    "bestPractices": number
+  },
+
+  "errorsFound": [
+    { "line": number, "message": "string", "explanation": "string" }
+  ],
+
+  "suggestions": [
+    { "type": "logic" | "style", "message": "string", "explanation": "string" }
+  ]
 }`;
 
-      const evalResult = await generateStructuredAIOutput<RemedialFeedback>(
-        prompt, 
-        undefined, 
-        true, 
-        (attempt) => setEvalRetryStatus(`Checking... R${attempt}/6`)
-      );
-      setFeedback(evalResult);
+    const evalResult = await generateStructuredAIOutput<AdvancedFeedback>(prompt);
 
-      if (evalResult.isCorrect && user && db) {
-        // Record as "Extra Practice"
-        const attemptRef = collection(db, "users", user.uid, "exerciseAttempts");
-        await addDoc(attemptRef, {
-          userId: user.uid,
-          exerciseId: "remedial_" + Date.now(),
-          isCorrect: true,
-          type: "remedial",
-          submittedAt: serverTimestamp(),
-        });
-        toast({ title: "Remedial Mission Accomplished!" });
-      }
-    } catch (error: any) {
-      toast({ title: "Evaluation failed.", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-      setEvalRetryStatus(null);
+    // 🧠 proteção contra resposta inválida da IA
+    const score = typeof evalResult.score === "number" ? evalResult.score : 0;
+
+    // 🔥 dificuldade adaptativa REAL
+    const isStrong = score >= 70;
+    const newLevel = updateDifficulty(isStrong);
+
+    console.log("New difficulty level:", newLevel);
+
+    // 🔥 UI
+    setFeedback(evalResult);
+
+    // 🔥 feedback
+    if (evalResult.isCorrect) {
+      toast({ title: "Remedial Mission Accomplished!" });
+    } else {
+      toast({ title: "Keep going — you're close.", variant: "destructive" });
     }
-  };
+
+  } catch (error: any) {
+    console.error(error);
+    toast({ title: "Evaluation failed.", variant: "destructive" });
+  } finally {
+    setIsSubmitting(false);
+    setEvalRetryStatus(null);
+  }
+};
 
   if (isGenerating || isUserLoading) {
     return (
