@@ -1,29 +1,33 @@
 "use client";
 
+import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-
-export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    setLoading(true);
-
-    // 🔥 FAKE LOGIN (sem firebase)
-    setTimeout(() => {
-      router.push("/");
-    }, 500);
+    await signIn("credentials", {
+      email,
+      password,
+      redirect: true,
+      callbackUrl: "/",
+    });
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Button onClick={handleLogin} disabled={loading}>
-        {loading ? "Entering..." : "Login"}
-      </Button>
+    <div className="h-screen flex flex-col items-center justify-center gap-2">
+      <input
+        placeholder="email"
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <input
+        placeholder="password"
+        type="password"
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <button onClick={handleLogin}>Login</button>
     </div>
   );
 }

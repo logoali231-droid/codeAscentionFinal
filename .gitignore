@@ -43,3 +43,5 @@ errors.txt
 typecheck_errors.txt
 
 
+
+/src/generated/prisma

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import ServiceWorkerRegister from "@/components/servicewconfigregister";
+import { UserProvider } from "@/firebase/provider";
 
 export const metadata: Metadata = {
   title: "Code Ascent | Master Programming",
@@ -11,12 +12,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
+    <link rel="manifest" href="/manifest.json" />
       <body>
-        <ServiceWorkerRegister />
-        <div className="android-container shadow-2xl">
-          {children}
-        </div>
-        <Toaster />
+        <UserProvider>
+          <ServiceWorkerRegister />
+          <div className="android-container shadow-2xl">
+            {children}
+          </div>
+          <Toaster />
+        </UserProvider>
       </body>
     </html>
   );

@@ -1,8 +1,1 @@
-# Fix Tailwind CSS Warnings in VSCode
-
-## Steps:
-- [x] 1. Create .vscode/extensions.json to recommend Tailwind CSS IntelliSense extension
-- [x] 2. Verify Tailwind v4 setup (no changes needed)
-- [x] 3. Reload VSCode window to clear diagnostics&#10;  (Run Ctrl/Cmd + R or "Developer: Reload Window")
-- [ ] 4. Verify warnings gone (check globals.css after reload/extension install)
-- [ ] 5. Mark complete
+# Fix Workspace Diagnostics\n\nCompleted:\n- [x] 1. Run `npx prisma generate` after .env setup (fix TS2305).\n- [x] 2. Update .vscode/settings.json (fix Tailwind warnings).\n\nPending:\n- [ ] 3. Run `npx tsc --noEmit` to verify.\n- [ ] 4. Reload VSCode (Ctrl+Shift+P > \"Developer: Reload Window\").\n- [ ] 5. Check diagnostics gone.\n

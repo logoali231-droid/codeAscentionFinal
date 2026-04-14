@@ -1,3 +1,6 @@
 {
-  "workbench.startupEditor": "readme"
+  "workbench.startupEditor": "readme",
+  "css.validate": false,
+  "less.validate": false,
+  "scss.validate": false
 }
