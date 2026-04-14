@@ -2,7 +2,7 @@
 "use client";
 
 import { BottomNav } from "@/components/BottomNav";
-import { User, Settings, Award, History, TrendingUp, Github } from "lucide-react";
+import { User, Settings, Award, History, TrendingUp, GitHub } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,7 +39,7 @@ export default function ProfilePage() {
             </Button>
           </Link>
           <Button variant="outline" className="flex-1 gap-2 font-bold uppercase text-[10px] tracking-widest">
-            <Github className="w-3 h-3" /> Connect
+            <GitHub className="w-3 h-3" /> Connect
           </Button>
         </div>
       </header>
