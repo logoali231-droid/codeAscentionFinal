@@ -12,23 +12,25 @@ const handler = NextAuth({
         password: {},
       },
       async authorize(credentials) {
-        if (!credentials) return null;
+  if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await findUser(credentials.email);
-        if (!user) return null;
+ const user = await findUser(credentials?.email);
+if (!user?.password || !credentials?.password) return null;
 
-        const valid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
+if (!user.password) return null;
 
-        if (!valid) return null;
+const valid = await bcrypt.compare(
+  credentials.password,
+  user.password
+);
 
-        return {
-          id: user.id,
-          email: user.email,
-        };
-      },
+  if (!valid) return null;
+
+  return {
+    id: user.id,
+    email: user.email,
+  };
+},
     }),
   ],
   session: {

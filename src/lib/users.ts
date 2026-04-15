@@ -10,11 +10,17 @@ if (process.env.NODE_ENV !== "production")
   globalForPrisma.prisma = prisma
 
 export async function findUser(email: string) {
+  if (!email || typeof email !== "string") return null;
+
   return prisma.user.findUnique({
     where: { email },
+    select: {
+      id: true,
+      email: true,
+      password: true,
+    },
   });
 }
-
 export async function createUser(email: string, password: string) {
   const existing = await findUser(email);
   if (existing) throw new Error("User already exists");
