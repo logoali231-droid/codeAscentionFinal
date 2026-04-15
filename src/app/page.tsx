@@ -28,8 +28,15 @@ export default function Home() {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [hasRecentStruggles, setHasRecentStruggles] = useState(false);
   const [isInsightLoading, setIsInsightLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     async function loadAiInsights() {
       setIsInsightLoading(true);
       try {
@@ -53,7 +60,7 @@ export default function Home() {
       }
     }
     loadAiInsights();
-  }, []);
+  }, [isClient]);
 
   return (
     <div className="pb-24 min-h-screen">
