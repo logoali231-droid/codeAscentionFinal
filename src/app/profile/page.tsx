@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { LogoutButton } from "@/components/LogoutButton";
 import * as Icons from "lucide-react";
 
 <Icons.Github />
@@ -44,6 +45,7 @@ export default function ProfilePage() {
           <Button variant="outline" className="flex-1 gap-2 font-bold uppercase text-[10px] tracking-widest">
             <Github className="w-3 h-3" /> Connect
           </Button>
+          <LogoutButton />
         </div>
       </header>
 
