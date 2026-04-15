@@ -1,5 +1,4 @@
 import { createUser, findUser } from "@/lib/users";
-import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
   try {
@@ -14,13 +13,11 @@ export async function POST(req: Request) {
       return Response.json({ error: "User exists" }, { status: 400 });
     }
 
-    const hashed = await bcrypt.hash(password, 10);
-
-    const user = await createUser(email, hashed);
+    const user = await createUser(email, password);
 
     return Response.json({ user });
   } catch (err) {
-    console.error(err);
+    console.error("REGISTER ERROR:", err);
     return Response.json({ error: "Internal error" }, { status: 500 });
   }
 }
