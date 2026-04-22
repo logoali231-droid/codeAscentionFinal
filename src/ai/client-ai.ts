@@ -1,7 +1,7 @@
 "use client";
 
 import { getHeuristicHint } from "./local-client";
-import { generateExercise } from "./webllm";
+import { generateExercise } from "@/ai/webllm";
 import type { Exercise } from "./types";
 import { updateDifficulty, getPerformance } from "./difficulty";
 
