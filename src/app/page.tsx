@@ -17,24 +17,24 @@ export default function Home() {
     setUser(u);
   }, []);
 
-  function handleLogout() {
-    logout();
-    window.location.href = "/login";
-  }
-
-  if (!user) return <div className="p-4">Loading...</div>;
+  if (!user) return <div>Loading...</div>;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-white">
-      <h1 className="text-2xl font-bold">Home</h1>
-      <p>Welcome: {user.email}</p>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="bg-zinc-900 text-white p-6 rounded-xl">
+        <h1 className="text-xl">Welcome</h1>
+        <p>{user.email}</p>
 
-      <button
-        onClick={handleLogout}
-        className="bg-red-600 px-4 py-2 rounded mt-4"
-      >
-        Logout
-      </button>
+        <button
+          onClick={() => {
+            logout();
+            window.location.href = "/login";
+          }}
+          className="mt-4 bg-red-500 px-3 py-2 rounded"
+        >
+          Logout
+        </button>
+      </div>
     </div>
   );
 }
