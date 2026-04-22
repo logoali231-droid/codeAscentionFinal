@@ -1,9 +1,19 @@
-import { buildPrompt } from "./generator";
 
-export async function generateLesson(input: string) {
-  const prompt = buildPrompt(input);
+import * as webllm from "@mlc-ai/web-llm";
 
-  await new Promise((r) => setTimeout(r, 500));
+// O tipo correto na versão nova é MLCEngineInterface
+let engine: webllm.MLCEngineInterface | null = null;
 
-  return prompt + "\n\n--- GENERATED ---";
+export async function getAiEngine() {
+  if (engine) return engine;
+
+  // Se você estiver usando as versões mais novas (v0.2.x+),
+  // a função correta é CreateMLCEngine
+  const selectedModel = "Phi-3-mini-4k-instruct-q4f16_1-MLC";
+  
+  engine = await webllm.CreateMLCEngine(selectedModel, {
+    initProgressCallback: (report) => console.log(report.text),
+  });
+  
+  return engine;
 }
