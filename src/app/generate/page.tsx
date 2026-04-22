@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { generateExercise } from "@/ai/webllm";
+import  {generateExercise}  from "@/ai/webllm";
 
 
 export default function GeneratePage() {

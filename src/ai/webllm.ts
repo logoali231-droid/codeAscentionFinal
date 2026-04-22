@@ -2,17 +2,10 @@
 
 import * as webllm from "@mlc-ai/web-llm";
 
-
 interface Exercise {
   title: string;
   description: string;
 }
-
-
-
-"use client";
-
-
 
 let engine: webllm.MLCEngine | null = null;
 
@@ -31,7 +24,8 @@ export async function getAIEngine() {
           {
             model: "Phi-3-mini-4k-instruct-q4f16_1",
             model_id: "Phi-3-mini-4k-instruct-q4f16_1",
-            model_lib: "https://mlc.ai/models/Phi-3-mini-4k-instruct-q4f16_1/resolve/main/",
+            model_lib:
+              "https://mlc.ai/models/Phi-3-mini-4k-instruct-q4f16_1/resolve/main/",
           },
         ],
       },
@@ -51,12 +45,19 @@ export async function generateExercise(
   const engine = await getAIEngine();
 
   const prompt = `
-Create a programming exercise.
+You are a programming teacher.
+
+Create a simple exercise.
 
 Topic: ${topic}
 Difficulty: ${difficulty}
 
-Respond ONLY in JSON:
+STRICT RULES:
+- Output ONLY valid JSON
+- No explanation
+- No markdown
+
+Format:
 {
   "title": "...",
   "description": "..."
@@ -67,14 +68,24 @@ Respond ONLY in JSON:
     messages: [{ role: "user", content: prompt }],
   });
 
-  const text = response.choices[0].message.content ?? "";
+  let text = response.choices[0].message.content ?? "";
+  text = text.trim();
 
-  try {
-    return JSON.parse(text);
-  } catch {
-    return {
-      title: topic,
-      description: text,
-    };
+  // limpa markdown se vier
+  if (text.startsWith("```")) {
+    text = text.replace(/```json|```/g, "").trim();
   }
+
+  const match = text.match(/\{[\s\S]*\}/);
+
+  if (match) {
+    try {
+      return JSON.parse(match[0]);
+    } catch {}
+  }
+
+  return {
+    title: `Exercise: ${topic}`,
+    description: text || "Try to code something about this topic.",
+  };
 }
