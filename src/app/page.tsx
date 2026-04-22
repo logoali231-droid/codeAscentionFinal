@@ -1,36 +1,17 @@
-"use client";
+import "./globals.css";
+import Navbar from "@/components/Navbar";
 
-import { useEffect, useState } from "react";
-import { getUser, logout } from "@/lib/authClient";
-
-export default function Home() {
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const u = getUser();
-
-    if (!u) {
-      window.location.href = "/login";
-      return;
-    }
-
-    setUser(u);
-  }, []);
-
-  function handleLogout() {
-    logout();
-    window.location.href = "/login";
-  }
-
-  if (!user) return <div>Loading...</div>;
-
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Home</h1>
-
-      <p>Welcome: {user.email}</p>
-
-      <button onClick={handleLogout}>Logout</button>
-    </div>
+    <html lang="en">
+      <body>
+        {children}
+        <Navbar />
+      </body>
+    </html>
   );
 }

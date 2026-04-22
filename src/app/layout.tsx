@@ -1,11 +1,4 @@
-import type { Metadata } from "next";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
-
-export const metadata: Metadata = {
-  title: "Code Ascent | Master Programming",
-  description: "AI-driven programming education platform.",
-};
 
 export default function RootLayout({
   children,
@@ -13,38 +6,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-
-        {/* PWA service worker (safe version) */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function () {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function (registration) {
-                      console.log('SW registered:', registration);
-                    })
-                    .catch(function (error) {
-                      console.log('SW registration failed:', error);
-                    });
-                });
-              }
-            `,
-          }}
-        />
-      </head>
-
-      <body>
-        {/* IMPORTANT: no Firebase / no auth providers here */}
-        <div className="android-container shadow-2xl">
-          {children}
-        </div>
-
-        <Toaster />
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }
