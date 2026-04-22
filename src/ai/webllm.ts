@@ -8,6 +8,12 @@ interface Exercise {
   description: string;
 }
 
+
+
+"use client";
+
+
+
 let engine: webllm.MLCEngine | null = null;
 
 export async function getAIEngine() {
@@ -18,8 +24,17 @@ export async function getAIEngine() {
   }
 
   engine = await webllm.CreateMLCEngine(
-    "Phi-3-mini-4k-instruct-q4f32_1",
+    "Phi-3-mini-4k-instruct-q4f16_1",
     {
+      appConfig: {
+        model_list: [
+          {
+            model: "Phi-3-mini-4k-instruct-q4f16_1",
+            model_id: "Phi-3-mini-4k-instruct-q4f16_1",
+            model_lib: "https://mlc.ai/models/Phi-3-mini-4k-instruct-q4f16_1/resolve/main/",
+          },
+        ],
+      },
       initProgressCallback: (progress: any) => {
         console.log("Loading AI:", progress);
       },
