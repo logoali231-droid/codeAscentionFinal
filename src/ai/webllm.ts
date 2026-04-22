@@ -9,6 +9,7 @@ interface Exercise {
 
 let engine: webllm.MLCEngine | null = null;
 
+
 export async function getAIEngine() {
   if (engine) return engine;
 
@@ -17,18 +18,13 @@ export async function getAIEngine() {
   }
 
   engine = await webllm.CreateMLCEngine(
-    "Phi-3-mini-4k-instruct-q4f16_1",
+    "Phi-3-mini-4k-instruct",
     {
+      // 🔥 ISSO RESOLVE O BUG
       appConfig: {
-        model_list: [
-          {
-            model: "Phi-3-mini-4k-instruct-q4f16_1",
-            model_id: "Phi-3-mini-4k-instruct-q4f16_1",
-            model_lib:
-              "https://mlc.ai/models/Phi-3-mini-4k-instruct-q4f16_1/resolve/main/",
-          },
-        ],
+        model_list: webllm.prebuiltAppConfig.model_list,
       },
+
       initProgressCallback: (progress: any) => {
         console.log("Loading AI:", progress);
       },
@@ -37,7 +33,6 @@ export async function getAIEngine() {
 
   return engine;
 }
-
 export async function generateExercise(
   topic: string,
   difficulty: string
