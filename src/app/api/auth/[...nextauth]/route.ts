@@ -1,62 +1,53 @@
-import NextAuth from "@auth/nextjs"
-import Credentials from "@auth/nextjs/providers/credentials"
-import bcrypt from "bcrypt"
-import type { User } from '@prisma/client'
-import { findUser } from '@/lib/users'
+import NextAuth from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { findUser } from "@/lib/users";
+import bcrypt from "bcrypt";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const handler = NextAuth({
   providers: [
-    Credentials({
+    CredentialsProvider({
+      name: "Credentials",
       credentials: {
         email: {},
         password: {},
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
+      async authorize(credentials: any) {
+        if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await findUser(credentials.email as string)
-        if (!user) {
-          return null
-        }
+        const user = await findUser(credentials.email);
+        if (!user?.password) return null;
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
+        const valid = await bcrypt.compare(
+          credentials.password,
           user.password
-        )
-        if (!isValid) {
-          return null
-        }
+        );
 
-        // Strip password for security
-        const { password, ...safeUser } = user
-        return safeUser
+        if (!valid) return null;
+
+        return {
+          id: user.id,
+          email: user.email,
+        };
       },
     }),
   ],
-  pages: {
-    signIn: '/login',
-  },
-  session: { 
-    strategy: 'jwt',
+  session: {
+    strategy: "jwt",
   },
   callbacks: {
-    jwt({ token, user, trigger }) {
-      if (trigger === "signIn" && user) {
-        token.id = user.id
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
       }
-      return token
+      return token;
     },
-    session({ session, token }) {
-      if (token) {
-        session.user.id = token.id
-        session.user.email = token.email!
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as any).id = token.id;
       }
-      return session
+      return session;
     },
   },
-})
+});
 
-export const GET = handlers.GET
-export const POST = handlers.POST
+export { handler as GET, handler as POST };
