@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as webllm from "@mlc-ai/web-llm";
@@ -9,8 +10,8 @@ interface Exercise {
 
 let engine: webllm.MLCEngine | null = null;
 
-
-export async function getAIEngine() {
+// Agora aceita um callback opcional para o progresso
+export async function getAIEngine(onProgress?: (report: any) => void) {
   if (engine) return engine;
 
   if (!("gpu" in navigator)) {
@@ -18,32 +19,31 @@ export async function getAIEngine() {
   }
 
   engine = await webllm.CreateMLCEngine(
-    "Phi-3-mini-4k-instruct",
+    "Phi-3-mini-4k-instruct-q4f16_1-MLC",
     {
-      // 🔥 ISSO RESOLVE O BUG
       appConfig: {
         model_list: webllm.prebuiltAppConfig.model_list,
       },
-
-      initProgressCallback: (progress: any) => {
-        console.log("Loading AI:", progress);
+      initProgressCallback: (report: any) => {
+        console.log("Loading AI:", report);
+        if (onProgress) onProgress(report);
       },
     }
   );
 
   return engine;
 }
+
 export async function generateExercise(
   topic: string,
-  difficulty: string
+  difficulty: string,
+  onProgress?: (report: any) => void 
 ): Promise<Exercise> {
-  const engine = await getAIEngine();
+  const engine = await getAIEngine(onProgress);
 
   const prompt = `
 You are a programming teacher.
-
 Create a simple exercise.
-
 Topic: ${topic}
 Difficulty: ${difficulty}
 
@@ -66,7 +66,7 @@ Format:
   let text = response.choices[0].message.content ?? "";
   text = text.trim();
 
-  // limpa markdown se vier
+  // Limpa markdown se vier (Correção da Regex aqui)
   if (text.startsWith("```")) {
     text = text.replace(/```json|```/g, "").trim();
   }
@@ -76,7 +76,9 @@ Format:
   if (match) {
     try {
       return JSON.parse(match[0]);
-    } catch {}
+    } catch (e) {
+      console.error("Erro ao converter JSON:", e);
+    }
   }
 
   return {
