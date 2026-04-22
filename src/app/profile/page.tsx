@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { LogoutButton } from "@/components/LogoutButton";
+import  LogoutButton  from "@/components/LogoutButton";
 import * as Icons from "lucide-react";
 
 <Icons.Github />
