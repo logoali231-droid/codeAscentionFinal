@@ -18,7 +18,7 @@ export async function getAIEngine() {
   }
 
   engine = await webllm.CreateMLCEngine(
-    "Phi-3-mini-4k-instruct-q4f16_1",
+    "Phi-3-mini-4k-instruct-q4f32_1",
     {
       initProgressCallback: (progress: any) => {
         console.log("Loading AI:", progress);
