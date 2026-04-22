@@ -1,26 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import CodeEditor from "@/components/CodeEditor";
-import { runCode } from "@/lib/codeRunner";
+import { useEffect, useState } from "react";
 
 export default function PracticePage() {
-  const [output, setOutput] = useState("");
+  const [exercise, setExercise] = useState<any>(null);
 
-  function handleRun(code: string) {
-    const res = runCode(code);
-    setOutput(res.output);
+  useEffect(() => {
+    const stored = localStorage.getItem("current_exercise");
+
+    if (stored) {
+      setExercise(JSON.parse(stored));
+    }
+  }, []);
+
+  if (!exercise) {
+    return <div className="p-4 text-white">No exercise loaded</div>;
   }
 
   return (
-    <div className="p-4 bg-black text-white min-h-screen space-y-4">
-      <h1>Practice</h1>
+    <div className="p-4 text-white space-y-4">
+      <h1 className="text-xl font-bold">{exercise.title}</h1>
+      <p>{exercise.description}</p>
 
-      <p>👉 Return 10</p>
-
-      <CodeEditor onRun={handleRun} />
-
-      <pre>{output}</pre>
+      <textarea
+        className="w-full h-40 bg-black border p-2"
+        placeholder="Write your code here..."
+      />
     </div>
   );
 }

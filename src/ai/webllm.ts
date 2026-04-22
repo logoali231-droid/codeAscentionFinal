@@ -2,6 +2,7 @@
 
 import * as webllm from "@mlc-ai/web-llm";
 
+
 interface Exercise {
   title: string;
   description: string;
