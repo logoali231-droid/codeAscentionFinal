@@ -1,20 +1,11 @@
-import { COURSES } from "@/app/lib/courses-data";
-import ExerciseClient from "./ExerciseClient";
+"use client";
 
-interface ExercisePageProps {
-  params: Promise<{ id: string }>;
-}
+export default function ExercisePage() {
+  return (
+    <div className="p-4 text-white bg-black min-h-screen">
+      <h1>Exercise</h1>
 
-export async function generateStaticParams() {
-  return COURSES.flatMap((course) =>
-    course.skills.map((skill) => ({
-      id: skill.id,
-    }))
+      <p>Implement a function that returns 10.</p>
+    </div>
   );
-}
-
-export default async function ExercisePage({ params }: ExercisePageProps) {
-  const { id } = await params;
-  
-  return <ExerciseClient id={id} />;
 }
