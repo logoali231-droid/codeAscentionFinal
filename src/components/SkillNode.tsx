@@ -17,7 +17,7 @@ interface SkillNodeProps {
 export function SkillNode({ id, title, status, type, index }: SkillNodeProps) {
   const isLocked = status === "locked";
   const isCompleted = status === "completed";
-  
+
   const content = (
     <motion.div
       initial={{ opacity: 0, scale: 0.8 }}

@@ -1,90 +1,64 @@
 
-"use client";
-
-import { BottomNav } from "@/components/BottomNav";
-import { User, Settings, Award, History, TrendingUp, Github } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { motion } from "framer-motion";
-import Link from "next/link";
-import  LogoutButton  from "@/components/LogoutButton";
-import * as Icons from "lucide-react";
-
-<Icons.Github />
+// src/app/profile/page.tsx
+'use client'
+import { useEffect, useState } from 'react';
+import { getLocalUser, UserProfile } from '@/lib/engine';
+import { Flame, Star, TrendingUp, Award, History } from 'lucide-react';
 
 export default function ProfilePage() {
-  const stats = [
-    { label: "Total XP", value: "14,502", icon: Star },
-    { label: "Rank", value: "#42", icon: TrendingUp },
-    { label: "Badges", value: "12", icon: Award },
-  ];
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    setUser(getLocalUser());
+  }, []);
+
+  if (!user) return null;
 
   return (
-    <div className="pb-32 min-h-screen">
-      <header className="p-8 bg-gradient-to-b from-primary/20 to-transparent flex flex-col items-center gap-4">
-        <div className="relative">
-          <Avatar className="w-24 h-24 border-4 border-primary glow-blue">
-            <AvatarImage src="https://picsum.photos/seed/user123/200" />
-            <AvatarFallback>JD</AvatarFallback>
-          </Avatar>
-          <div className="absolute -bottom-2 -right-2 bg-accent rounded-full p-2 border-2 border-background">
-            <Flame className="w-4 h-4 text-white fill-white" />
-          </div>
+    <main className="android-container min-h-screen bg-black text-white pb-32">
+      <header className="p-8 bg-gradient-to-b from-blue-600/20 flex flex-col items-center gap-4 text-center">
+        <div className="w-24 h-24 rounded-full border-4 border-blue-600 overflow-hidden relative">
+           <img src={`https://picsum.photos/seed/${user.name}/200`} alt="Avatar" />
         </div>
-        <div className="text-center">
-          <h1 className="font-headline text-2xl font-bold">John Doe</h1>
-          <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Pro Developer • Level 18</p>
-        </div>
-        <div className="flex gap-2 w-full mt-4">
-          <Link href="/settings" className="flex-1 w-full flex">
-            <Button variant="secondary" className="flex-1 gap-2 font-bold uppercase text-[10px] tracking-widest w-full">
-              <Settings className="w-3 h-3" /> Configure
-            </Button>
-          </Link>
-          <Button variant="outline" className="flex-1 gap-2 font-bold uppercase text-[10px] tracking-widest">
-            <Github className="w-3 h-3" /> Connect
-          </Button>
-          <LogoutButton />
-        </div>
+        <h1 className="text-2xl font-black italic uppercase tracking-tighter">{user.name}</h1>
+        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+          {user.expertise} • LEVEL {Math.floor(user.xp / 1000) + 1}
+        </p>
       </header>
 
-      <main className="px-6 space-y-6">
+      <div className="px-6 space-y-6">
         <div className="grid grid-cols-3 gap-3">
-          {stats.map((stat, idx) => (
-            <Card key={idx} className="bg-card border-border overflow-hidden">
-              <CardContent className="p-3 text-center space-y-1">
-                <stat.icon className="w-4 h-4 mx-auto text-primary" />
-                <div className="text-xs font-bold">{stat.value}</div>
-                <div className="text-[8px] text-muted-foreground uppercase font-bold tracking-tighter">{stat.label}</div>
-              </CardContent>
-            </Card>
-          ))}
+          <StatBox icon={<Star />} label="XP" value={user.xp.toLocaleString()} />
+          <StatBox icon={<TrendingUp />} label="RANK" value={user.rank} />
+          <StatBox icon={<Award />} label="LOGS" value={user.errorLog.length.toString()} />
         </div>
 
-        <section>
-          <h3 className="font-headline font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-            <History className="w-4 h-4 text-primary" /> Recent Achievements
+        <div className="space-y-4">
+          <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+            <History className="w-3 h-3" /> User Struggle Notes
           </h3>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex gap-4 items-center bg-secondary/50 p-4 rounded-xl border border-border">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Award className="text-primary w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold">Loop Master {i}</h4>
-                  <p className="text-xs text-muted-foreground">Mastered the art of iterative logic.</p>
-                </div>
+          {user.errorLog.length === 0 ? (
+            <div className="p-8 text-center text-zinc-700 border-2 border-dashed border-zinc-900 rounded-3xl">No logs yet.</div>
+          ) : (
+            user.errorLog.slice(-3).reverse().map((error, i) => (
+              <div key={i} className="bg-zinc-900/50 border-l-4 border-blue-600 p-5 rounded-r-3xl">
+                <p className="text-[10px] font-black text-blue-400 uppercase mb-1">{error.topic}</p>
+                <p className="text-sm text-zinc-300 italic">"{error.userExplanation}"</p>
               </div>
-            ))}
-          </div>
-        </section>
-      </main>
-
-      <BottomNav />
-    </div>
+            ))
+          )}
+        </div>
+      </div>
+    </main>
   );
 }
 
-import { Flame, Star } from "lucide-react";
+function StatBox({ icon, label, value }: any) {
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-center">
+      <div className="flex justify-center mb-1 text-blue-500 opacity-50">{icon}</div>
+      <div className="text-sm font-bold">{value}</div>
+      <div className="text-[8px] text-zinc-600 font-black uppercase mt-1">{label}</div>
+    </div>
+  );
+}
